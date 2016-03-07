@@ -11,7 +11,7 @@ extern vr::Texture_t eyeTextures[2];
 
 bool initVR();
 void initTextures();
-void renderFrame();
+//void renderFrame();
 void shutdownVR();
 
 #else //USE_OSVR

@@ -5,9 +5,7 @@
 #include <SDL.h>
 
 #ifdef USE_OPENGL
-#include <SDL_opengl.h>
-#include <SDL_opengl_glext.h>
-#pragma comment(lib, "opengl32.lib")
+#include "GL.h"
 #else //USE_DIRECT3D
 #endif
 

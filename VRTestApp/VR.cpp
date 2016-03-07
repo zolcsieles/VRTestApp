@@ -37,15 +37,6 @@ bool initVR()
 	return true;
 }
 
-void createWindow()
-{
-	/*
-	int32_t pX, pY;
-	uint32_t W, H;
-	vrDisp->GetWindowBounds(&pX, &pY, &W, &H);
-	*/
-}
-
 void initTextures()
 {
 	uint32_t w = 0;
@@ -60,6 +51,7 @@ void initTextures()
 	}
 }
 
+/*
 void renderFrame()
 {
 	if (vrComp->CanRenderScene())
@@ -70,6 +62,7 @@ void renderFrame()
 		vrComp->Submit(vr::Eye_Right, &eyeTextures[vr::Eye_Right], nullptr, vr::Submit_Default);
 	}
 }
+*/
 
 void shutdownVR()
 {
