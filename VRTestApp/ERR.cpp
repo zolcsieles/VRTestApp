@@ -32,6 +32,13 @@ void Warning(const char* format, ...)
 	ColoredOutput(FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN, format, ap);
 }
 
+void Info(const char* format, ...)
+{
+	va_list ap;
+	va_start(ap, format);
+	ColoredOutput(FOREGROUND_INTENSITY | FOREGROUND_GREEN, format, ap);
+}
+
 void ErrorExit(const char* format, ...)
 {
 	va_list ap;
