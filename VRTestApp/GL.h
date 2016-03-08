@@ -411,7 +411,7 @@ typedef void (APIENTRYP PFNGLPOPNAMEPROC)(void);
 #undef _GL_PROC
 #define _GL_PROC(X, x) extern PFN##X##PROC x
 
-namespace OpenGL
+namespace gl
 {
 #include "GL_PROCS.h"
 };

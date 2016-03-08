@@ -7,13 +7,13 @@
 #undef _GL_PROC
 #define _GL_PROC(X, x) PFN##X##PROC x
 
-namespace OpenGL
+namespace gl
 {
 #include "GL_PROCS.h"
 }
 
 #undef _GL_PROC
- #define _GL_PROC(X, x) OpenGL::x = (PFN##X##PROC)SDL_GL_GetProcAddress(#x)
+ #define _GL_PROC(X, x) gl::x = (PFN##X##PROC)SDL_GL_GetProcAddress(#x)
 
 void initGL()
 {
@@ -22,7 +22,7 @@ void initGL()
 
 #undef _GL_PROC
 #define _GL_PROC(X, x) \
-if (OpenGL::x == nullptr) \
+if (gl::x == nullptr) \
 {	Error(#x); printf("\n");}
 
 #undef _GL_EXT
