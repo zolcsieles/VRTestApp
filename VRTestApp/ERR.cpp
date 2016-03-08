@@ -3,7 +3,7 @@
 #include "ERR.h"
 #include "windows.h"
 
-void ColoredOutput(WORD Attrib, const char* format, ...)
+void ColoredOutput(WORD Attrib, const char* format, va_list ap)
 {
 	HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -11,8 +11,6 @@ void ColoredOutput(WORD Attrib, const char* format, ...)
 
 	SetConsoleTextAttribute(hStdOut, Attrib);
 
-	va_list ap;
-	va_start(ap, format);
 	vprintf(format, ap);
 
 	SetConsoleTextAttribute(hStdOut, csbi.wAttributes);
