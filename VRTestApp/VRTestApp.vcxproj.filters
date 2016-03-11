@@ -77,10 +77,16 @@
       <Filter>Data\Shaders</Filter>
     </None>
     <None Include="ClassDiagram.cd" />
-    <None Include="..\Working\Data\Shaders\quad.fs">
+    <None Include="..\Working\Data\Shaders\quad_shader\quad.vs">
       <Filter>Data\Shaders</Filter>
     </None>
-    <None Include="..\Working\Data\Shaders\quad.vs">
+    <None Include="..\Working\Data\Shaders\quad_shader\quad_ilc.fs">
+      <Filter>Data\Shaders</Filter>
+    </None>
+    <None Include="..\Working\Data\Shaders\quad_shader\quad_sbs.fs">
+      <Filter>Data\Shaders</Filter>
+    </None>
+    <None Include="..\Working\Data\Shaders\quad_shader\quad_tad.fs">
       <Filter>Data\Shaders</Filter>
     </None>
   </ItemGroup>

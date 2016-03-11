@@ -9,6 +9,7 @@
 bool runing = true;
 bool stereoRenderInited = false;
 bool stereoRenderUsed = false;
+int actQuad = 0;
 
 enum ZLS_Eye {
 	Eye_Center,
@@ -29,7 +30,9 @@ void MyExit()
 	getchar();
 }
 
-float leftFirst;
+bool swapEyes;
+bool swapEyesByLine;
+
 void Events()
 {
 	SDL_Event e;
@@ -41,20 +44,29 @@ void Events()
 		{
 			if (e.window.event == SDL_WINDOWEVENT_MOVED)
 			{
-				leftFirst = 1.0f*(e.window.data2%2); //y
+				swapEyesByLine = (e.window.data2%2) != 0; //y
 			}
 		}
 		if (e.type == SDL_KEYDOWN)
 		{
-			if (e.key.keysym.sym == VK_SPACE) leftFirst = 1.0f-leftFirst;
-			if (e.key.keysym.sym == 'w')
+			switch (e.key.keysym.sym)
 			{
+			case VK_SPACE:
+				swapEyes ^= true;
+				break;
+			case '1':
+			case '2':
+			case '3':
+				actQuad = e.key.keysym.sym - '1';
+				break;
+			case 'w':
 				stereoRenderUsed ^= true;
 				if (stereoRenderUsed && !stereoRenderInited)
 				{
 					InitStereoRender();
 				}
 				setRenderFrame(Render, stereoRenderUsed);
+				break;
 			}
 		}
 	}
@@ -141,10 +153,26 @@ GLfloat projMat[4][4];
 GLfloat viewMat[4][4];
 GLfloat modelMat[4][4];
 
-GLuint eyeRB[2];
-GLuint eyeDepth[2];
-GLuint eyeTex[2];
-GLuint quadArray, quadVertexBuffer, quadProgram, quadVS, quadFS, quadTex[2], leftFirstIdx;
+enum QuadShader {
+	QS_INTERLACED = 0,
+	QS_SBS,
+	QS_TAD,
+	QS_COUNT
+};
+
+char* QuadFShaderFile[QS_COUNT] = {
+	"Data/Shaders/quad_shader/quad_ilc.fs",
+	"Data/Shaders/quad_shader/quad_sbs.fs",
+	"Data/Shaders/quad_shader/quad_tad.fs"
+};
+char* QuadVShaderFile = "Data/Shaders/quad_shader/quad.vs";
+
+const int N_STEREO = 2;
+
+GLuint eyeRB[N_STEREO];
+GLuint eyeDepth[N_STEREO];
+GLuint eyeTex[N_STEREO];
+GLuint quadArray, quadVertexBuffer, quadProgram[QS_COUNT], quadVS, quadFS[QS_COUNT], quadTex[QS_COUNT][N_STEREO], swapEyesIdx[QS_COUNT];
 
 void Render(ZLS_Eye act)
 {
@@ -192,17 +220,17 @@ void stereoRenderFrame()
 	gl::glViewport(0, 0, dispWidth, dispHeight);
 
 	gl::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	gl::glUseProgram(quadProgram);
+	gl::glUseProgram(quadProgram[actQuad]);
 
-	gl::glProgramUniform1f(quadProgram, leftFirstIdx, leftFirst);
+	gl::glProgramUniform1f(quadProgram[actQuad], swapEyesIdx[actQuad], swapEyes^(swapEyesByLine&actQuad==QS_INTERLACED) ? 1.0f : 0.0f);
 
 	gl::glActiveTexture(GL_TEXTURE0);
 	gl::glBindTexture(GL_TEXTURE_2D, eyeTex[0]);
-	gl::glProgramUniform1i(quadProgram, quadTex[0], 0);
+	gl::glProgramUniform1i(quadProgram[actQuad], quadTex[actQuad][0], 0);
 
 	gl::glActiveTexture(GL_TEXTURE1);
 	gl::glBindTexture(GL_TEXTURE_2D, eyeTex[1]);
-	gl::glProgramUniform1i(quadProgram, quadTex[1], 1);
+	gl::glProgramUniform1i(quadProgram[actQuad], quadTex[actQuad][1], 1);
 
 	gl::glBindVertexArray(quadArray);
 	gl::glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -354,11 +382,18 @@ void InitStereoRender()
 	gl::glEnableVertexAttribArray(1);
 	gl::glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 3 + sizeof(float) * 2, (void*)(3 * sizeof(float)));
 
-	CreateAndLinkProgram("Data/Shaders/quad.vs", "Data/Shaders/quad.fs", &quadVS, &quadFS, &quadProgram);
-	quadTex[0] = gl::glGetUniformLocation(quadProgram, "texLeft");
-	quadTex[1] = gl::glGetUniformLocation(quadProgram, "texRight");
-	leftFirstIdx = gl::glGetUniformLocation(quadProgram, "leftFirst");
+	quadVS = LoadShader(QuadVShaderFile, GL_VERTEX_SHADER);
+	
+	for (int i = 0; i < QS_COUNT; ++i)
+	{
+		quadFS[i] = LoadShader(QuadFShaderFile[i], GL_FRAGMENT_SHADER);
+		quadProgram[i] = LinkProgram(quadVS, quadFS[i]);
 
+		quadTex[i][0] = gl::glGetUniformLocation(quadProgram[i], "texLeft");
+		quadTex[i][1] = gl::glGetUniformLocation(quadProgram[i], "texRight");
+		swapEyesIdx[i] = gl::glGetUniformLocation(quadProgram[i], "swapEyes");
+	}
+	
 	stereoRenderInited = true;
 }
 
@@ -377,8 +412,8 @@ void InitGeometry()
 	const int nTriangleVertices = 3;
 	Vertex v_triangle[nTriangleVertices] =
 	{
-		{ 0.0f, 0.5f, -1.0f },
-		{ -0.5f, -0.5f, -1.0f },
+		{-0.25f,  0.5f, -1.0f },
+		{-0.5f, -0.5f, -1.0f },
 		{ 0.5f, -0.5f, -1.0f }
 	};
 
