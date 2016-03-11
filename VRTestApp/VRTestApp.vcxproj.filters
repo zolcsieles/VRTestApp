@@ -76,7 +76,6 @@
     <None Include="..\Working\Data\Shaders\simple.vs">
       <Filter>Data\Shaders</Filter>
     </None>
-    <None Include="ClassDiagram.cd" />
     <None Include="..\Working\Data\Shaders\quad_shader\quad.vs">
       <Filter>Data\Shaders</Filter>
     </None>

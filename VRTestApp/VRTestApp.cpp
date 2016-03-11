@@ -222,7 +222,7 @@ void stereoRenderFrame()
 	gl::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	gl::glUseProgram(quadProgram[actQuad]);
 
-	gl::glProgramUniform1f(quadProgram[actQuad], swapEyesIdx[actQuad], swapEyes^(swapEyesByLine&actQuad==QS_INTERLACED) ? 1.0f : 0.0f);
+	gl::glProgramUniform1f(quadProgram[actQuad], swapEyesIdx[actQuad], swapEyes^(swapEyesByLine&&actQuad==QS_INTERLACED) ? 1.0f : 0.0f);
 
 	gl::glActiveTexture(GL_TEXTURE0);
 	gl::glBindTexture(GL_TEXTURE_2D, eyeTex[0]);

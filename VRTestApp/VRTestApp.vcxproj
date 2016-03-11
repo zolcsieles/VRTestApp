@@ -187,7 +187,6 @@
     <None Include="..\Working\Data\Shaders\quad_shader\quad_tad.fs" />
     <None Include="..\Working\Data\Shaders\simple.fs" />
     <None Include="..\Working\Data\Shaders\simple.vs" />
-    <None Include="ClassDiagram.cd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
