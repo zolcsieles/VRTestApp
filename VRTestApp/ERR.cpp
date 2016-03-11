@@ -41,7 +41,7 @@ void ErrorExit(const char* format, ...)
 {
 	va_list ap;
 	va_start(ap, format);
-	Error(format, ap);
+	ColoredOutput(FOREGROUND_INTENSITY | FOREGROUND_RED, format, ap);
 
 	exit(0);
 }

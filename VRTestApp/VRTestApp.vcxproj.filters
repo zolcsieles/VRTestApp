@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{0851ba93-17c0-4005-a055-41a2545db74a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Data\Shaders">
+      <UniqueIdentifier>{b9be0ebe-536a-4ae3-b840-8214d9c848c0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -62,5 +68,20 @@
     <ClCompile Include="GL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Working\Data\Shaders\simple.fs">
+      <Filter>Data\Shaders</Filter>
+    </None>
+    <None Include="..\Working\Data\Shaders\simple.vs">
+      <Filter>Data\Shaders</Filter>
+    </None>
+    <None Include="ClassDiagram.cd" />
+    <None Include="..\Working\Data\Shaders\quad.fs">
+      <Filter>Data\Shaders</Filter>
+    </None>
+    <None Include="..\Working\Data\Shaders\quad.vs">
+      <Filter>Data\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

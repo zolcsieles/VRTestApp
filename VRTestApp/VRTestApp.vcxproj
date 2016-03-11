@@ -180,6 +180,13 @@
     <ClCompile Include="VRTestApp.cpp" />
     <ClCompile Include="GX.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Working\Data\Shaders\quad.fs" />
+    <None Include="..\Working\Data\Shaders\quad.vs" />
+    <None Include="..\Working\Data\Shaders\simple.fs" />
+    <None Include="..\Working\Data\Shaders\simple.vs" />
+    <None Include="ClassDiagram.cd" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
