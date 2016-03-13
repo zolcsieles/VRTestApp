@@ -88,5 +88,11 @@
     <None Include="..\Working\Data\Shaders\quad_shader\quad_tad.fs">
       <Filter>Data\Shaders</Filter>
     </None>
+    <None Include="..\Working\Data\Shaders\simple_shaded.fs">
+      <Filter>Data\Shaders</Filter>
+    </None>
+    <None Include="..\Working\Data\Shaders\simple_shaded.vs">
+      <Filter>Data\Shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
