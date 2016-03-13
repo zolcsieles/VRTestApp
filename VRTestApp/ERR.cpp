@@ -43,5 +43,7 @@ void ErrorExit(const char* format, ...)
 	va_start(ap, format);
 	ColoredOutput(FOREGROUND_INTENSITY | FOREGROUND_RED, format, ap);
 
+	printf("Press ENTER to exit.\n");
+	getchar();
 	exit(0);
 }
