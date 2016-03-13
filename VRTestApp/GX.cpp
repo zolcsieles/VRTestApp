@@ -45,7 +45,9 @@ bool initGX(const char* Title, int PosX, int PosY, int Width, int Height, GxDriv
 	Uint32 wf = 0;
 
 	if (Driver == GX_OGL)	wf |= SDL_WINDOW_OPENGL;
-
+#ifdef FULLSCREEN
+	wf |= SDL_WINDOW_FULLSCREEN;
+#endif
 	sdl_window = SDL_CreateWindow(Title, PosX, PosY, Width, Height, wf);
 	int driverIdx = GetDriverIndex(Driver);
 	sdl_renderer = SDL_CreateRenderer(sdl_window, Driver, SDL_RENDERER_ACCELERATED);
