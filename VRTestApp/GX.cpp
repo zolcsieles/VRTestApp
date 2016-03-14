@@ -50,8 +50,7 @@ bool initGX(const char* Title, int PosX, int PosY, int Width, int Height, GxDriv
 #endif
 	sdl_window = SDL_CreateWindow(Title, PosX, PosY, Width, Height, wf);
 	int driverIdx = GetDriverIndex(Driver);
-	sdl_renderer = SDL_CreateRenderer(sdl_window, Driver, SDL_RENDERER_ACCELERATED);
-
+	sdl_renderer = SDL_GetRenderer(sdl_window);
 	SDL_SetRenderDrawColor(sdl_renderer, 128, 128, 128, 128);
 	return true;
 }
@@ -71,5 +70,5 @@ void GX_Clear()
 void GX_SwapBuffer()
 {
 	SDL_GL_SwapWindow(sdl_window);
-	//SDL_RenderPresent(sdl_renderer);
+	SDL_RenderPresent(sdl_renderer);
 }

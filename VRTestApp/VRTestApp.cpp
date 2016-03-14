@@ -5,8 +5,12 @@
 #include "VR.h"
 #include "ERR.h"
 #include "GL.h"
+#include "FS.h"
 
 #include <math.h>
+#include "zls_math/zls_math.h"
+
+#include <map>
 
 bool runing = true;
 bool stereoRenderInited = false;
@@ -18,6 +22,8 @@ int dispWidth = 800;
 int dispHeight = 600;
 int iEyeWidth;
 int iEyeHeight;
+
+zls::math::vec3 camPos(0.0f, 0.0f, -20.0f);
 
 float rot = 0.0f;
 
@@ -40,8 +46,10 @@ void MyExit()
 bool swapEyes;
 bool swapEyesByLine;
 
-void Events()
+void Events(float dt)
 {
+	static bool pressed[SDL_NUM_SCANCODES] = { false };
+
 	SDL_Event e;
 	if (SDL_PollEvent(&e))
 	{
@@ -51,11 +59,12 @@ void Events()
 		{
 			if (e.window.event == SDL_WINDOWEVENT_MOVED)
 			{
-				swapEyesByLine = (e.window.data2%2) != 0; //y
+				swapEyesByLine = (e.window.data2 % 2) != 0; //y
 			}
 		}
 		if (e.type == SDL_KEYDOWN)
 		{
+			pressed[e.key.keysym.scancode] = true;
 			switch (e.key.keysym.scancode)
 			{
 			case SDL_SCANCODE_SPACE:
@@ -66,24 +75,48 @@ void Events()
 			case SDL_SCANCODE_3:
 				actQuad = e.key.keysym.scancode - SDL_SCANCODE_1;
 				break;
-			case SDL_SCANCODE_KP_PLUS:
-				dif += 0.01f;
-				break;
-			case SDL_SCANCODE_KP_MINUS:
-				dif -= 0.01f;
-				break;
 			case SDL_SCANCODE_Q:
 				break;
 			case SDL_SCANCODE_W:
 				stereoRenderUsed ^= true;
 				if (stereoRenderUsed && !stereoRenderInited)
 				{
-					InitStereoRender(dispWidth, dispHeight);
+					InitStereoRender(dispWidth >> 1, dispHeight);
 				}
 				setRenderFrame(Render, stereoRenderUsed);
 				break;
 			}
 		}
+		if (e.type == SDL_KEYUP)
+		{
+			pressed[e.key.keysym.scancode] = false;
+		}
+	}
+
+	if (pressed[SDL_SCANCODE_LEFT])
+	{
+		camPos.x -= 25.f*dt;
+	}
+	if (pressed[SDL_SCANCODE_RIGHT])
+	{
+		camPos.x += 25.f*dt;
+	}
+	if (pressed[SDL_SCANCODE_UP])
+	{
+		camPos.z -= 25.f*dt;
+	}
+	if (pressed[SDL_SCANCODE_DOWN])
+	{
+		camPos.z += 25.f*dt;
+	}
+
+	if (pressed[SDL_SCANCODE_KP_PLUS])
+	{
+		dif += 0.01f;
+	}
+	if (pressed[SDL_SCANCODE_KP_MINUS])
+	{
+		dif -= 0.01f;
 	}
 }
 
@@ -119,93 +152,6 @@ void frustum(T _near, T _far, T _top, T _bottom, T _left, T _right, T(& m)[4][4]
 	m[3][3] = 0.0;
 }
 
-template<typename T>
-void symfrustum(T _near, T _far, T _top, T _right, T(&m)[4][4])
-{
-	const T n2 = 2 * _near;
-	const T fpn = _far + _near;
-	const T fmn = _far - _near;
-
-	m[0][0] = _near / _right;
-	m[1][0] = 0.0;
-	m[2][0] = 0.0;
-	m[3][0] = 0.0;
-
-	m[0][1] = 0.0;
-	m[1][1] = _near / _top;
-	m[2][1] = 0.0;
-	m[3][1] = 0.0;
-
-	m[0][2] = 0.0;
-	m[1][2] = 0.0;
-	m[2][2] = (-fpn) / fmn;
-	m[3][2] = (-n2*_far) / fmn;
-
-	m[0][3] = 0.0;
-	m[1][3] = 0.0;
-	m[2][3] = -1.0;
-	m[3][3] = 0.0;
-}
-
-template<typename T>
-void rotatez(T rot, T(&m)[4][4])
-{
-	float r = rot * M_PI / 180.0f;
-	m[0][0] = cos(r);
-	m[1][1] = m[0][0];
-	m[2][2] = 1.0f;
-	m[3][3] = 1.0f;
-	m[1][0] = sin(r);
-	m[0][1] = -m[1][0];
-};
-
-template<typename T>
-void rotatey(T rot, T(&m)[4][4])
-{
-	float r = rot * M_PI / 180.0f;
-	m[0][0] = cos(r);
-	m[1][1] = 1.0f;
-	m[2][2] = m[0][0];
-	m[3][3] = 1.0f;
-
-	m[2][0] = sin(r);
-	m[0][2] = -m[2][0];
-};
-
-template<typename T>
-void rotatex(T rot, T(&m)[4][4])
-{
-	float r = rot * M_PI / 180.0f;
-	m[0][0] = 1.0f;
-	m[1][1] = cos(r);
-	m[2][2] = m[1][1];
-	m[3][3] = 1.0f;
-
-	m[1][2] = sin(r);
-	m[2][1] = -m[1][2];
-};
-
-template<typename T>
-void translate(T x, T y, T z, T(&m)[4][4])
-{
-	m[0][0] = 1.0f;
-	m[1][1] = 1.0f;
-	m[2][2] = 1.0f;
-	m[3][3] = 1.0f;
-
-	m[3][0] = x;
-	m[3][1] = y;
-	m[3][2] = z;
-};
-
-
-template<typename T>
-void identity(T(& m)[4][4])
-{
-	m[0][0] = m[1][1] = m[2][2] = m[3][3] = 1.0;
-	m[0][1] = m[0][2] = m[0][3] = m[1][0] = m[1][2] = m[1][3] = m[2][0] = m[2][1] = m[2][3] = 0.0;
-}
-
 //Shaders and Programs
 GLuint vs, fs, simple;
 GLuint modelMatIdx, viewMatIdx, projMatIdx;
@@ -213,9 +159,12 @@ GLuint vertArrayObj;
 GLuint vertBuffer, indexBuffer;
 GLuint faceColorIdx;
 
-GLfloat projMat[4][4];
-GLfloat viewMat[4][4];
-GLfloat modelMat[4][4];
+//GLfloat projMat[4][4];
+//GLfloat viewMat[4][4];
+//GLfloat modelMat[4][4];
+zls::math::mat4 projMat;
+zls::math::mat4 viewMat;
+zls::math::mat4 modelMat;
 
 enum QuadShader {
 	QS_INTERLACED = 0,
@@ -243,27 +192,26 @@ void Render(ZLS_Eye act)
 	gl::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	gl::glUseProgram(simple);
 
-	const float dist = 20.0f;
 	switch (act)
 	{
 	case Eye_Left:
 		gl::glUniform3f(faceColorIdx, 1.0f, 0.0f, 0.0f); 
-		translate(-dif, 0.0f, -dist, viewMat);
+		viewMat.SetTranslate(camPos.x-dif, camPos.y, camPos.z);
 		break;
 	case Eye_Right:
 		gl::glUniform3f(faceColorIdx, 0.0f, 0.0f, 1.0f);
-		translate(+dif, 0.0f, -dist, viewMat);
+		viewMat.SetTranslate(camPos.x+dif, camPos.y, camPos.z);
 		break;
 	case Eye_Center: default:
 		gl::glUniform3f(faceColorIdx, 0.0f, 1.0f, 0.0f); 
-		translate(0.0f, 0.0f, -dist, viewMat);
+		viewMat.SetTranslate(camPos.x, camPos.y, camPos.z);
 		break;
 	}
 	gl::glUniform3f(faceColorIdx, 0.5f, 0.0f, 0.0f);
 
-	gl::glUniformMatrix4fv(projMatIdx, 1, GL_FALSE, (GLfloat*)projMat);
-	gl::glUniformMatrix4fv(viewMatIdx, 1, GL_FALSE, (GLfloat*)viewMat);
-	gl::glUniformMatrix4fv(modelMatIdx, 1, GL_FALSE, (GLfloat*)modelMat);
+	gl::glUniformMatrix4fv(projMatIdx, 1, GL_FALSE, (GLfloat*)projMat());
+	gl::glUniformMatrix4fv(viewMatIdx, 1, GL_FALSE, (GLfloat*)viewMat());
+	gl::glUniformMatrix4fv(modelMatIdx, 1, GL_FALSE, (GLfloat*)modelMat());
 
 	gl::glBindVertexArray(vertArrayObj);
 	gl::glDrawElements(GL_TRIANGLES, 3*2*2*3, GL_UNSIGNED_INT, 0);
@@ -336,25 +284,6 @@ void setRenderFrame(void (render)(ZLS_Eye), bool isStereo)
 	renderSubFrame = render;
 }
 
-void ReadFile(const char* fileName, char** content, int* len)
-{
-	FILE* f;
-	fopen_s(&f, fileName, "rb");
-
-	if (!f)
-		ErrorExit("File not found: %s\n", fileName);
-
-	fseek(f, 0, SEEK_END);
-	*len = (int)ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	*content = new char[*len+1];
-	fread(*content, sizeof(char), *len, f);
-	(*content)[*len] = '\0';
-
-	fclose(f);
-}
-
 GLuint LoadShader(const char* fileName, GLenum shaderType)
 {
 	Info("Loading shader: %s\n", fileName);
@@ -406,7 +335,6 @@ bool InitRenderBuffer(GLuint& rb, GLuint& tx, GLuint& zb, int eyeWidth, int eyeH
 	gl::glBindRenderbuffer(GL_RENDERBUFFER, zb);
 	gl::glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, eyeWidth, eyeHeight);
 	gl::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, zb);
-
 	gl::glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tx, 0);
 
 	GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
@@ -442,12 +370,18 @@ void InitStereoRender(int eyeWidth, int eyeHeight)
 	gl::glGenVertexArrays(1, &quadArray);
 	gl::glBindVertexArray(quadArray);
 
-	const GLfloat quadBufferData[] =
+	struct QuadBuffer
 	{
-		-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
-		1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
-		-1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-		1.0f, 1.0f, 0.0f, 1.0f, 1.0f
+		zls::math::vec3 pos;
+		zls::math::vec2 uv;
+	};
+
+	const QuadBuffer quadBufferData[] =
+	{
+		{ { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f } },
+		{ { 1.0f, -1.0f, 0.0f }, { 1.0f, 0.0f } },
+		{ { -1.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } },
+		{ { 1.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }
 	};
 
 	gl::glGenBuffers(1, &quadVertexBuffer);
@@ -502,16 +436,16 @@ void InitGeometry()
 	};
 #else
 	const int nVertices = 8;
-	Vertex v_buffer[nVertices] =
+	zls::math::vec3 v_buffer[nVertices] =
 	{
-		{ -5.0f, -5.0f, -5.0f },
-		{ +5.0f, -5.0f, -5.0f },
-		{ -5.0f, +5.0f, -5.0f },
-		{ +5.0f, +5.0f, -5.0f },
-		{ -5.0f, -5.0f, +5.0f },
-		{ +5.0f, -5.0f, +5.0f },
-		{ -5.0f, +5.0f, +5.0f },
-		{ +5.0f, +5.0f, +5.0f }
+		{ -5.0f, -5.0f, -5.0f }, //0
+		{ +5.0f, -5.0f, -5.0f }, //1
+		{ -5.0f, +5.0f, -5.0f }, //2
+		{ +5.0f, +5.0f, -5.0f }, //3
+		{ -5.0f, -5.0f, +5.0f }, //4
+		{ +5.0f, -5.0f, +5.0f }, //5
+		{ -5.0f, +5.0f, +5.0f }, //6
+		{ +5.0f, +5.0f, +5.0f }  //7
 	};
 
 	const int nIndices = 3*2*2*3;
@@ -530,7 +464,7 @@ void InitGeometry()
 		0, 2, 4,
 		2, 4, 6,
 		1, 3, 5,
-		2, 5, 7,
+		3, 5, 7,
 	};
 #endif
 
@@ -556,6 +490,9 @@ void InitShaders()
 int _tmain(int argc, _TCHAR* argv[])
 {
 	atexit(MyExit);
+
+	zls::math::mat2 mat;
+
 
 	bool tryUseVr = false;
 	bool useVr = tryUseVr;
@@ -584,7 +521,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 	initGL();
-
 	Info("Vendor: %s\n", gl::glGetString(GL_VENDOR));
 	Info("Renderer: %s\n", gl::glGetString(GL_RENDERER));
 	Info("Version: %s\n", gl::glGetString(GL_VERSION));
@@ -598,15 +534,15 @@ int _tmain(int argc, _TCHAR* argv[])
 	InitGeometry();
 
 	//Matrices
-	symfrustum(1.0f, 100.0f, 1.0f, float(dispWidth)/float(dispHeight), projMat);
-	identity(viewMat);
-	identity(modelMat);
+	projMat.SetSymetricFrustum(1.0f, 100.0f, 1.0f, float(dispWidth)/float(dispHeight));
+	viewMat.SetIdentity();
+	modelMat.SetIdentity();
 
 	//Render buffers (for VR)
 	bool useStereo = useVr;
 	if (useStereo)
 	{
-		InitStereoRender(dispWidth, dispHeight);
+		InitStereoRender(dispWidth>>1, dispHeight);
 	}
 
 	float t = 0.0f;
@@ -623,9 +559,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		tick0 = tick1;
 		tick1 = GetTickCount() * (1.0f / 1000.0f);
 		dt = tick1 - tick0;
-		Events();
+		Events(dt);
 		renderFrame();
-		rotatex(t, modelMat);
+		modelMat.SetRotateX(t);
 		t += 45*dt;
 	}
 

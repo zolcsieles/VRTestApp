@@ -19,6 +19,9 @@
     <Filter Include="Data\Shaders">
       <UniqueIdentifier>{b9be0ebe-536a-4ae3-b840-8214d9c848c0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\zls_math">
+      <UniqueIdentifier>{f6f92ca9-f784-41f2-95fc-6e3fc5222167}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -48,6 +51,24 @@
     <ClInclude Include="GL_PROCS.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="zls_math\zls_math.h">
+      <Filter>Header Files\zls_math</Filter>
+    </ClInclude>
+    <ClInclude Include="zls_math\zls_math_mat.h">
+      <Filter>Header Files\zls_math</Filter>
+    </ClInclude>
+    <ClInclude Include="zls_math\zls_math_vec.h">
+      <Filter>Header Files\zls_math</Filter>
+    </ClInclude>
+    <ClInclude Include="zls_math\zls_math_traits.h">
+      <Filter>Header Files\zls_math</Filter>
+    </ClInclude>
+    <ClInclude Include="FS.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="zls_math\zls_math_funcs.h">
+      <Filter>Header Files\zls_math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -66,6 +87,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FS.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
