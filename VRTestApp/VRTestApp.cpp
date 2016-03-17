@@ -17,6 +17,9 @@ bool stereoRenderInited = false;
 bool stereoRenderUsed = false;
 int actQuad = 0;
 float dif = -0.05f;
+bool rotate = false;
+float rotSpeed = 45.0f;
+float rotActual = 0.0f;
 
 int dispWidth = 800;
 int dispHeight = 600;
@@ -85,6 +88,14 @@ void Events(float dt)
 				}
 				setRenderFrame(Render, stereoRenderUsed);
 				break;
+			case SDL_SCANCODE_R:
+				rotActual = 0.0f;
+				rotSpeed = 45.0f;
+				rotate = false;
+				break;
+			case SDL_SCANCODE_T:
+				rotate ^= true;
+				break;
 			}
 		}
 		if (e.type == SDL_KEYUP)
@@ -120,37 +131,57 @@ void Events(float dt)
 	}
 }
 
-template<typename T>
-void frustum(T _near, T _far, T _top, T _bottom, T _left, T _right, T(& m)[4][4])
+class IShader
 {
-	const T n2 = 2 * _near;
-	const T rpl = _right + _left;
-	const T rml = _right - _left;
-	const T tmb = _top - _bottom;
-	const T tpb = _top + _bottom;
-	const T fpn = _far + _near;
-	const T fmn = _far - _near;
+public:
+	static std::map<std::string, IShader> shaders;
+	
+protected:
+};
 
-	m[0][0] = n2 / rml;
-	m[1][0] = 0.0;
-	m[2][0] = rpl / rml;
-	m[3][0] = 0.0;
+class IShaderGL : IShader
+{
+private:
+	GLuint shaderID;
+	
+protected:
+	GLuint GenerateID(GLenum shaderType)
+	{
+		if (IsValid())
+			return shaderID;
+		shaderID = gl::glCreateShader(shaderType);
+	}
 
-	m[0][1] = 0.0;
-	m[1][1] = n2 / tmb;
-	m[2][1] = tpb / tmb;
-	m[3][1] = 0.0;
+	void LoadShader(const char* fileName, GLenum shaderType)
+	{
+		//TODO: Find shader in shaders
 
-	m[0][2] = 0.0;
-	m[1][2] = 0.0;
-	m[2][2] = (-fpn) / fmn;
-	m[3][2] = (-n2*_far) / fmn;
+	}
 
-	m[0][3] = 0.0;
-	m[1][3] = 0.0;
-	m[2][3] =-1.0;
-	m[3][3] = 0.0;
-}
+public:
+	bool IsValid()
+	{
+		return shaderID != 0;
+	}
+
+	GLuint GetID()
+	{
+		return shaderID;
+	}
+};
+
+template<GLenum shaderType>
+class Shader : IShader
+{
+public:
+	Shader() : shaderID(0)
+	{
+	}
+
+	void LoadShader(const char* fileName)
+	{
+	}
+};
 
 //Shaders and Programs
 GLuint vs, fs, simple;
@@ -158,13 +189,13 @@ GLuint modelMatIdx, viewMatIdx, projMatIdx;
 GLuint vertArrayObj;
 GLuint vertBuffer, indexBuffer;
 GLuint faceColorIdx;
+GLuint texIdx;
 
-//GLfloat projMat[4][4];
-//GLfloat viewMat[4][4];
-//GLfloat modelMat[4][4];
 zls::math::mat4 projMat;
 zls::math::mat4 viewMat;
 zls::math::mat4 modelMat;
+
+GLuint cirTex;
 
 enum QuadShader {
 	QS_INTERLACED = 0,
@@ -191,6 +222,10 @@ void Render(ZLS_Eye act)
 {
 	gl::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	gl::glUseProgram(simple);
+	
+	gl::glActiveTexture(GL_TEXTURE0);
+	gl::glBindTexture(GL_TEXTURE_2D, cirTex);
+	gl::glProgramUniform1i(simple, texIdx, 0);
 
 	switch (act)
 	{
@@ -293,13 +328,67 @@ GLuint LoadShader(const char* fileName, GLenum shaderType)
 	GLuint sh = 0;
 
 	sh = gl::glCreateShader(shaderType);
-	ReadFile(fileName, &con, &len);
+	zls::fs::ReadFile(fileName, &con, &len);
 	gl::glShaderSource(sh, 1, &con, &len);
 	gl::glCompileShader(sh);
 	gl::glGetShaderInfoLog(sh, 65535, NULL, temp);
 	if (temp[0]) { Warning("Shader Log: %s\n", temp); }
 
 	return sh;
+}
+
+GLuint LoadTexture(const char* fileName)
+{
+	char* con;
+	int len;
+
+#pragma pack(push, 1)
+	struct TGAHeader
+	{ //https://en.wikipedia.org/wiki/Truevision_TGA
+		unsigned char idLength;
+		unsigned char colorMapType;
+		unsigned char imageType;
+		
+		//unsigned char colorMapSpec[5];
+		unsigned short cms_firstIndex;
+		unsigned short cms_colorMapLen;
+		unsigned char cms_colorMapEntrySize;
+		
+		//unsigned char imageSpec[10];
+		unsigned short is_xOrigin;
+		unsigned short is_yOrigin;
+		unsigned short is_iWidth;
+		unsigned short is_iHeight;
+		unsigned char is_iBPP;
+		unsigned char is_iDesc;
+	}* tgaHeader; //44 bytes
+#pragma pack(pop)
+
+	zls::fs::ReadFile(fileName, &con, &len);
+	tgaHeader = (TGAHeader*)con;
+	//assert(tgaHeader.colorMapType == 0 && tgaHeader.imageType == 2) //TrueColor without RLE
+	unsigned char* ptr0 = (unsigned char*)con + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize+14;
+
+	//Rotate color 24 bit
+
+	unsigned char* ptr = ptr0;
+	unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
+	while (ptr < ptrE)
+	{
+		unsigned char t = *ptr;
+		*ptr = *(ptr + 2);
+		*(ptr + 2) = t;
+		ptr += 3;
+	}
+
+	GLuint tex;
+	gl::glGenTextures(1, &tex);
+	gl::glBindTexture(GL_TEXTURE_2D, tex);
+	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tgaHeader->is_iWidth, tgaHeader->is_iHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, ptr0);
+	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	return tex;
 }
 
 GLuint LinkProgram(GLuint vertShader, GLuint fragShader)
@@ -388,9 +477,9 @@ void InitStereoRender(int eyeWidth, int eyeHeight)
 	gl::glBindBuffer(GL_ARRAY_BUFFER, quadVertexBuffer);
 	gl::glBufferData(GL_ARRAY_BUFFER, sizeof(quadBufferData), quadBufferData, GL_STATIC_DRAW);
 	gl::glEnableVertexAttribArray(0); //Matches layout (location = 0)
-	gl::glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3 + sizeof(float) * 2, 0);
+	gl::glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(QuadBuffer), 0);
 	gl::glEnableVertexAttribArray(1); //Matches layout (location = 1)
-	gl::glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 3 + sizeof(float) * 2, (void*)(3 * sizeof(float)));
+	gl::glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(QuadBuffer), (void*)(3 * sizeof(float)));
 
 	quadVS = LoadShader(QuadVShaderFile, GL_VERTEX_SHADER);
 	
@@ -416,13 +505,12 @@ void InitGeometry()
 	gl::glGenBuffers(1, &vertBuffer);
 	gl::glGenBuffers(1, &indexBuffer);
 
-	struct Vertex {
+#ifdef TRIANGLE
+	struct Vert {
 		float x, y, z;
 	};
-
-#ifdef TRIANGLE
 	const int nVertices = 3;
-	Vertex v_buffer[nVertices] =
+	Vert v_buffer[nVertices] =
 	{
 		{-0.25f,  0.5f, -1.0f },
 		{-0.5f, -0.5f, -1.0f },
@@ -436,16 +524,21 @@ void InitGeometry()
 	};
 #else
 	const int nVertices = 8;
-	zls::math::vec3 v_buffer[nVertices] =
+	struct Vert
 	{
-		{ -5.0f, -5.0f, -5.0f }, //0
-		{ +5.0f, -5.0f, -5.0f }, //1
-		{ -5.0f, +5.0f, -5.0f }, //2
-		{ +5.0f, +5.0f, -5.0f }, //3
-		{ -5.0f, -5.0f, +5.0f }, //4
-		{ +5.0f, -5.0f, +5.0f }, //5
-		{ -5.0f, +5.0f, +5.0f }, //6
-		{ +5.0f, +5.0f, +5.0f }  //7
+		zls::math::vec3 v_pos;
+		zls::math::vec2 v_uv;
+	};
+	Vert v_buffer[nVertices] =
+	{
+		{ { -5.0f, -5.0f, -5.0f }, { 0.0f, 0.0f } }, //0
+		{ { +5.0f, -5.0f, -5.0f }, { 1.0f, 0.0f } }, //1
+		{ { -5.0f, +5.0f, -5.0f }, { 0.0f, 1.0f } }, //2
+		{ { +5.0f, +5.0f, -5.0f }, { 1.0f, 1.0f } }, //3
+		{ { -5.0f, -5.0f, +5.0f }, { 0.0f, 0.0f } }, //4
+		{ { +5.0f, -5.0f, +5.0f }, { 1.0f, 0.0f } }, //5
+		{ { -5.0f, +5.0f, +5.0f }, { 0.0f, 1.0f } }, //6
+		{ { +5.0f, +5.0f, +5.0f }, { 1.0f, 1.0f } }  //7
 	};
 
 	const int nIndices = 3*2*2*3;
@@ -469,9 +562,11 @@ void InitGeometry()
 #endif
 
 	gl::glBindBuffer(GL_ARRAY_BUFFER, vertBuffer);
-	gl::glBufferData(GL_ARRAY_BUFFER, sizeof(Vertex)*nVertices, v_buffer, GL_STATIC_DRAW);
+	gl::glBufferData(GL_ARRAY_BUFFER, sizeof(Vert)*nVertices, v_buffer, GL_STATIC_DRAW);
 	gl::glEnableVertexAttribArray(0); //Matches layout (location = 0)
-	gl::glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), 0);
+	gl::glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), 0);
+	gl::glEnableVertexAttribArray(1);
+	gl::glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), (void*)(3*sizeof(float)));
 
 	gl::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
 	gl::glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)*nIndices, i_buffer, GL_STATIC_DRAW);
@@ -485,6 +580,7 @@ void InitShaders()
 	viewMatIdx = gl::glGetUniformLocation(simple, "viewMat");
 	projMatIdx = gl::glGetUniformLocation(simple, "projMat");
 	faceColorIdx = gl::glGetUniformLocation(simple, "faceColor");
+	texIdx = gl::glGetUniformLocation(simple, "tex");
 }
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -534,7 +630,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	InitGeometry();
 
 	//Matrices
-	projMat.SetSymetricFrustum(1.0f, 100.0f, 1.0f, float(dispWidth)/float(dispHeight));
+	//projMat.SetSymetricFrustum(1.0f, 100.0f, 1.0f, float(dispWidth)/float(dispHeight));
+	projMat.SetFrustum(1.0f, 100.f, 1.0f, -1.0f, -float(dispWidth)/float(dispHeight), float(dispWidth)/float(dispHeight));
 	viewMat.SetIdentity();
 	modelMat.SetIdentity();
 
@@ -545,13 +642,13 @@ int _tmain(int argc, _TCHAR* argv[])
 		InitStereoRender(dispWidth>>1, dispHeight);
 	}
 
-	float t = 0.0f;
-
 	gl::glEnable(GL_DEPTH_TEST);
 	gl::glFrontFace(GL_CW);
 	gl::glCullFace(GL_FRONT_FACE);
 
 	float tick0, tick1, dt;
+
+	cirTex = LoadTexture("Data/Textures/Circle.tga");
 
 	tick0 = tick1 = GetTickCount() * (1.0f / 1000.0f);
 	while (runing)
@@ -561,8 +658,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		dt = tick1 - tick0;
 		Events(dt);
 		renderFrame();
-		modelMat.SetRotateX(t);
-		t += 45*dt;
+		modelMat.SetRotateX(rotActual);
+		if (rotate)
+			rotActual += rotSpeed*dt;
 	}
 
 	return 0;

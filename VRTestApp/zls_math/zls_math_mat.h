@@ -149,6 +149,37 @@ namespace zls
 				m[3][3] = zls::math::traits<T>::ONE;
 			}
 
+			void SetFrustum(const T _near, const T _far, const T _top, const T _bottom, const T _left, const T _right)
+			{
+				const T n2 = 2 * _near;
+				const T rpl = _right + _left;
+				const T rml = _right - _left;
+				const T tmb = _top - _bottom;
+				const T tpb = _top + _bottom;
+				const T fpn = _far + _near;
+				const T fmn = _far - _near;
+
+				m[0][0] = n2 / rml;
+				m[1][0] = 0.0;
+				m[2][0] = rpl / rml;
+				m[3][0] = 0.0;
+
+				m[0][1] = 0.0;
+				m[1][1] = n2 / tmb;
+				m[2][1] = tpb / tmb;
+				m[3][1] = 0.0;
+
+				m[0][2] = 0.0;
+				m[1][2] = 0.0;
+				m[2][2] = (-fpn) / fmn;
+				m[3][2] = (-n2*_far) / fmn;
+
+				m[0][3] = 0.0;
+				m[1][3] = 0.0;
+				m[2][3] = -1.0;
+				m[3][3] = 0.0;
+			}
+
 			void SetSymetricFrustum(const T _near, const T _far, T _top, T _right)
 			{
 				const T n2 = 2 * _near;
