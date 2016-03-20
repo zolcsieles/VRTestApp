@@ -87,20 +87,8 @@ void initD3D11_1(HWND hWnd)
 #endif
 
 bool runing = true;
-int actQuad = 0;
-float dif = -0.05f;
-bool rotate = false;
-float rotSpeed = 45.0f;
-float rotActual = 0.0f;
-
 int dispWidth = 800;
 int dispHeight = 600;
-
-zls::math::vec3 camPos(0.0f, 0.0f, -20.0f);
-
-float rot = 0.0f;
-
-extern void Render();
 
 void MyExit()
 {
@@ -114,63 +102,16 @@ void Events(float dt)
 	SDL_Event e;
 	if (SDL_PollEvent(&e))
 	{
-		if (e.type == SDL_QUIT)
-			runing = false;
-		if (e.type == SDL_KEYDOWN)
-		{
-			pressed[e.key.keysym.scancode] = true;
-			switch (e.key.keysym.scancode)
-			{
-			case SDL_SCANCODE_R:
-				rotActual = 0.0f;
-				rotSpeed = 45.0f;
-				rotate = false;
-				break;
-			case SDL_SCANCODE_T:
-				rotate ^= true;
-				break;
-			}
-		}
-		if (e.type == SDL_KEYUP)
-		{
-			pressed[e.key.keysym.scancode] = false;
-		}
-	}
-
-	if (pressed[SDL_SCANCODE_LEFT])
-	{
-		camPos.x -= 25.f*dt;
-	}
-	if (pressed[SDL_SCANCODE_RIGHT])
-	{
-		camPos.x += 25.f*dt;
-	}
-	if (pressed[SDL_SCANCODE_UP])
-	{
-		camPos.z -= 25.f*dt;
-	}
-	if (pressed[SDL_SCANCODE_DOWN])
-	{
-		camPos.z += 25.f*dt;
-	}
-
-	if (pressed[SDL_SCANCODE_KP_PLUS])
-	{
-		dif += 0.01f;
-	}
-	if (pressed[SDL_SCANCODE_KP_MINUS])
-	{
-		dif -= 0.01f;
+		if (e.type == SDL_QUIT) runing = false;
+		if (e.type == SDL_KEYDOWN) pressed[e.key.keysym.scancode] = true;
+		if (e.type == SDL_KEYUP) pressed[e.key.keysym.scancode] = false;
 	}
 }
 
 //Shaders and Programs
 #if defined(USE_GX_OPENGL)
-GLuint modelMatIdx, viewMatIdx, projMatIdx;
 GLuint vertArrayObj;
 GLuint vertBuffer, indexBuffer;
-//GLuint faceColorIdx;
-//GLuint texIdx;
 #elif defined(USE_GX_D3D11)
 ID3D11Buffer *vertBuffer, *indexBuffer;
 #endif
@@ -178,14 +119,6 @@ ID3D11Buffer *vertBuffer, *indexBuffer;
 MyVertexShader* vs;
 MyPixelShader* fs;
 MyShaderProgram* simple;
-
-zls::math::mat4 projMat;
-zls::math::mat4 viewMat;
-zls::math::mat4 modelMat;
-
-#if defined(USE_GX_OPENGL)
-GLuint cirTex;
-#endif
 
 //PINA
 void Render()
@@ -207,8 +140,7 @@ void Render()
 
 	ir->GetDeviceContextPtr()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	//ir->GetDeviceContextPtr()->Draw(3, 0);
-	ir->GetDeviceContextPtr()->DrawIndexed(3*2, 0, 0);
+	ir->GetDeviceContextPtr()->DrawIndexed(3*2, 0, 0); 	//ir->GetDeviceContextPtr()->Draw(3, 0);
 #endif
 }
 
@@ -223,84 +155,6 @@ void monoRenderFrame()
 
 	ir->SwapBuffers();
 }
-
-#if defined(USE_GX_OPENGL)
-GLuint LoadShader(const char* fileName, GLenum shaderType)
-{
-	Info("Loading shader: %s\n", fileName);
-	char temp[4096];
-	char* con;
-	int len;
-	GLuint sh = 0;
-
-	sh = gl::glCreateShader(shaderType);
-	zls::fs::ReadFile(fileName, &con, &len);
-	gl::glShaderSource(sh, 1, &con, &len);
-	gl::glCompileShader(sh);
-	gl::glGetShaderInfoLog(sh, 65535, NULL, temp);
-	if (temp[0]) { Warning("Shader Log: %s\n", temp); }
-	delete[] con;
-
-	return sh;
-}
-#endif
-
-#if defined(USE_GX_OPENGL)
-GLuint LoadTexture(const char* fileName)
-{
-	char* con;
-	int len;
-
-#pragma pack(push, 1)
-	struct TGAHeader
-	{ //https://en.wikipedia.org/wiki/Truevision_TGA
-		unsigned char idLength;
-		unsigned char colorMapType;
-		unsigned char imageType;
-		
-		//unsigned char colorMapSpec[5];
-		unsigned short cms_firstIndex;
-		unsigned short cms_colorMapLen;
-		unsigned char cms_colorMapEntrySize;
-		
-		//unsigned char imageSpec[10];
-		unsigned short is_xOrigin;
-		unsigned short is_yOrigin;
-		unsigned short is_iWidth;
-		unsigned short is_iHeight;
-		unsigned char is_iBPP;
-		unsigned char is_iDesc;
-	}* tgaHeader; //44 bytes
-#pragma pack(pop)
-
-	zls::fs::ReadFile(fileName, &con, &len);
-	tgaHeader = (TGAHeader*)con;
-	//assert(tgaHeader.colorMapType == 0 && tgaHeader.imageType == 2) //TrueColor without RLE
-	unsigned char* ptr0 = (unsigned char*)con + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize+14;
-
-	//Rotate color 24 bit
-
-	unsigned char* ptr = ptr0;
-	unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
-	while (ptr < ptrE)
-	{
-		unsigned char t = *ptr;
-		*ptr = *(ptr + 2);
-		*(ptr + 2) = t;
-		ptr += 3;
-	}
-
-	GLuint tex;
-	gl::glGenTextures(1, &tex);
-	gl::glBindTexture(GL_TEXTURE_2D, tex);
-	//gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tgaHeader->is_iWidth, tgaHeader->is_iHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, ptr0);
-	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tgaHeader->is_iWidth, tgaHeader->is_iHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, ptr0);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	return tex;
-}
-#endif
 
 void InitGeometry()
 {
@@ -518,14 +372,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	InitGeometry();
 
 	//Matrices
-	//projMat.SetSymetricFrustum(1.0f, 100.0f, 1.0f, float(dispWidth)/float(dispHeight));
-	projMat.SetFrustum(1.0f, 100.f, 1.0f, -1.0f, -float(dispWidth)/float(dispHeight), float(dispWidth)/float(dispHeight));
-	viewMat.SetIdentity();
-	modelMat.SetIdentity();
-
-#if defined(USE_GX_OPENGL)
-	cirTex = LoadTexture("Data/Textures/Circle.tga");
-#endif
 
 	float tick0, tick1, dt;
 	tick0 = tick1 = GetTickCount() * (1.0f / 1000.0f);
@@ -539,10 +385,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		Events(dt);
 		
 		monoRenderFrame();
-
-		modelMat.SetRotateX(rotActual);
-		if (rotate)
-			rotActual += rotSpeed*dt;
 	}
 
 	return 0;
