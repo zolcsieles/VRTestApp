@@ -87,8 +87,6 @@ void initD3D11_1(HWND hWnd)
 #endif
 
 bool runing = true;
-bool stereoRenderInited = false;
-bool stereoRenderUsed = false;
 int actQuad = 0;
 float dif = -0.05f;
 bool rotate = false;
@@ -97,30 +95,17 @@ float rotActual = 0.0f;
 
 int dispWidth = 800;
 int dispHeight = 600;
-int iEyeWidth;
-int iEyeHeight;
 
 zls::math::vec3 camPos(0.0f, 0.0f, -20.0f);
 
 float rot = 0.0f;
 
-enum ZLS_Eye {
-	Eye_Center,
-	Eye_Left,
-	Eye_Right
-};
-
-extern void InitStereoRender(int eyeWidth, int eyeHeight);
-extern void Render(ZLS_Eye act);
-extern void setRenderFrame(void (render)(ZLS_Eye), bool isStereo);
+extern void Render();
 
 void MyExit()
 {
 	shutdownGX();
 }
-
-bool swapEyes;
-bool swapEyesByLine;
 
 void Events(float dt)
 {
@@ -131,36 +116,11 @@ void Events(float dt)
 	{
 		if (e.type == SDL_QUIT)
 			runing = false;
-		if (e.type == SDL_WINDOWEVENT)
-		{
-			if (e.window.event == SDL_WINDOWEVENT_MOVED)
-			{
-				swapEyesByLine = (e.window.data2 % 2) != 0; //y
-			}
-		}
 		if (e.type == SDL_KEYDOWN)
 		{
 			pressed[e.key.keysym.scancode] = true;
 			switch (e.key.keysym.scancode)
 			{
-			case SDL_SCANCODE_SPACE:
-				swapEyes ^= true;
-				break;
-			case SDL_SCANCODE_1:
-			case SDL_SCANCODE_2:
-			case SDL_SCANCODE_3:
-				actQuad = e.key.keysym.scancode - SDL_SCANCODE_1;
-				break;
-			case SDL_SCANCODE_Q:
-				break;
-			case SDL_SCANCODE_W:
-				stereoRenderUsed ^= true;
-				if (stereoRenderUsed && !stereoRenderInited)
-				{
-					InitStereoRender(dispWidth >> 1, dispHeight);
-				}
-				setRenderFrame(Render, stereoRenderUsed);
-				break;
 			case SDL_SCANCODE_R:
 				rotActual = 0.0f;
 				rotSpeed = 45.0f;
@@ -227,62 +187,13 @@ zls::math::mat4 modelMat;
 GLuint cirTex;
 #endif
 
-enum QuadShader {
-	QS_INTERLACED = 0,
-	QS_SBS,
-	QS_TAD,
-	QS_COUNT
-};
-
-char* QuadFShaderFile[QS_COUNT] = {
-	"Data/Shaders/quad_shader/quad_ilc.fs",
-	"Data/Shaders/quad_shader/quad_sbs.fs",
-	"Data/Shaders/quad_shader/quad_tad.fs"
-};
-char* QuadVShaderFile = "Data/Shaders/quad_shader/quad.vs";
-
-const int N_STEREO = 2;
-
-#if defined(USE_GX_OPENGL)
-GLuint eyeRB[N_STEREO];
-GLuint eyeDepth[N_STEREO];
-GLuint eyeTex[N_STEREO];
-GLuint quadArray, quadVertexBuffer, quadProgram[QS_COUNT], quadVS, quadFS[QS_COUNT], quadTex[QS_COUNT][N_STEREO], swapEyesIdx[QS_COUNT];
-#endif
-
 //PINA
-void Render(ZLS_Eye act)
+void Render()
 {
 	ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
 	ir->ActivateProgram(simple);
 
 #if defined(USE_GX_OPENGL)
-/*	
-	gl::glActiveTexture(GL_TEXTURE0);
-	gl::glBindTexture(GL_TEXTURE_2D, cirTex);
-	gl::glProgramUniform1i(simple, texIdx, 0);
-
-	switch (act)
-	{
-	case Eye_Left:
-		gl::glUniform3f(faceColorIdx, 1.0f, 0.0f, 0.0f); 
-		viewMat.SetTranslate(camPos.x-dif, camPos.y, camPos.z);
-		break;
-	case Eye_Right:
-		gl::glUniform3f(faceColorIdx, 0.0f, 0.0f, 1.0f);
-		viewMat.SetTranslate(camPos.x+dif, camPos.y, camPos.z);
-		break;
-	case Eye_Center: default:
-		gl::glUniform3f(faceColorIdx, 0.0f, 1.0f, 0.0f); 
-		viewMat.SetTranslate(camPos.x, camPos.y, camPos.z);
-		break;
-	}
-	gl::glUniform3f(faceColorIdx, 0.5f, 0.0f, 0.0f);
-
-	gl::glUniformMatrix4fv(projMatIdx, 1, GL_FALSE, (GLfloat*)projMat());
-	gl::glUniformMatrix4fv(viewMatIdx, 1, GL_FALSE, (GLfloat*)viewMat());
-	gl::glUniformMatrix4fv(modelMatIdx, 1, GL_FALSE, (GLfloat*)modelMat());
-*/
 	gl::glBindVertexArray(vertArrayObj);
 	gl::glDrawElements(GL_TRIANGLES, 3*2, GL_UNSIGNED_INT, 0);
 	gl::glBindVertexArray(0);
@@ -301,55 +212,6 @@ void Render(ZLS_Eye act)
 #endif
 }
 
-void(*renderFrame)() = nullptr;
-void(*renderSubFrame)(ZLS_Eye) = nullptr;
-
-void stereoRenderFrame()
-{
-	//Render left
-#if defined(USE_GX_OPENGL)
-	gl::glBindFramebuffer(GL_FRAMEBUFFER, eyeRB[0]);
-	gl::glViewport(0, 0, iEyeWidth, iEyeHeight);
-#endif
-	renderSubFrame(Eye_Left);
-
-	//Render right
-#if defined(USE_GX_OPENGL)
-	gl::glBindFramebuffer(GL_FRAMEBUFFER, eyeRB[1]);
-	gl::glViewport(0, 0, iEyeWidth, iEyeHeight);
-#endif
-	renderSubFrame(Eye_Right);
-
-#if defined(USE_GX_OPENGL)
-	gl::glBindTexture(GL_TEXTURE_2D, 0);
-
-	//Render screen
-	gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	gl::glViewport(0, 0, dispWidth, dispHeight);
-
-	gl::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	gl::glUseProgram(quadProgram[actQuad]);
-
-	gl::glProgramUniform1f(quadProgram[actQuad], swapEyesIdx[actQuad], swapEyes^(swapEyesByLine&&actQuad==QS_INTERLACED) ? 1.0f : 0.0f);
-	
-	gl::glActiveTexture(GL_TEXTURE0);
-	gl::glBindTexture(GL_TEXTURE_2D, eyeTex[0]);
-	gl::glProgramUniform1i(quadProgram[actQuad], quadTex[actQuad][0], 0);
-
-	gl::glActiveTexture(GL_TEXTURE1);
-	gl::glBindTexture(GL_TEXTURE_2D, eyeTex[1]);
-	gl::glProgramUniform1i(quadProgram[actQuad], quadTex[actQuad][1], 1);
-
-	gl::glBindVertexArray(quadArray);
-	gl::glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	gl::glBindVertexArray(0);
-
-	gl::glUseProgram(0);
-#endif
-
-	ir->SwapBuffers();
-}
-
 void monoRenderFrame()
 {
 	//Render screen
@@ -357,22 +219,9 @@ void monoRenderFrame()
 	gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	gl::glViewport(0, 0, dispWidth, dispHeight);
 #endif
-	renderSubFrame(Eye_Center);
+	Render();
 
 	ir->SwapBuffers();
-}
-
-void setRenderFrame(void (render)(ZLS_Eye), bool isStereo)
-{
-	if (isStereo)
-	{
-		renderFrame = stereoRenderFrame;
-	}
-	else
-	{
-		renderFrame = monoRenderFrame;
-	}
-	renderSubFrame = render;
 }
 
 #if defined(USE_GX_OPENGL)
@@ -452,107 +301,6 @@ GLuint LoadTexture(const char* fileName)
 	return tex;
 }
 #endif
-
-#if defined(USE_GX_OPENGL)
-bool InitRenderBuffer(GLuint& rb, GLuint& tx, GLuint& zb, int eyeWidth, int eyeHeight)
-{
-	gl::glBindFramebuffer(GL_FRAMEBUFFER, rb);
-
-	gl::glBindTexture(GL_TEXTURE_2D, tx);
-	//gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, eyeWidth, eyeHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, eyeWidth, eyeHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-
-	gl::glBindTexture(GL_TEXTURE_2D, zb);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, eyeWidth, eyeHeight, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
-	//gl::glBindRenderbuffer(GL_RENDERBUFFER, zb);
-	//gl::glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, eyeWidth, eyeHeight);
-	//gl::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, zb);
-	//gl::glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tx, 0);
-
-	//GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-	//gl::glDrawBuffers(1, DrawBuffers);
-
-	gl::glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tx, 0);
-	gl::glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, zb, 0);
-
-	//if (gl::glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	//	return false;
-
-	iEyeWidth = eyeWidth;
-	iEyeHeight = eyeHeight;
-	return true;
-}
-#endif
-
-void InitStereoRender(int eyeWidth, int eyeHeight)
-{
-/*
-	if (stereoRenderInited)
-		return;
-#if defined(USE_GX_OPENGL)
-	gl::glGenFramebuffers(2, eyeRB);
-	gl::glGenTextures(2, eyeTex);
-	//gl::glGenRenderbuffers(2, eyeDepth);
-	gl::glGenTextures(2, eyeDepth);
-	for (int i = 0; i < 2; ++i)
-	{
-		if (!InitRenderBuffer(eyeRB[i], eyeTex[i], eyeDepth[i], eyeWidth, eyeHeight))
-		{
-			ErrorExit("Unable to create renderbuffer %i", i);
-		}
-	}
-	gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	//
-	gl::glGenVertexArrays(1, &quadArray);
-	gl::glBindVertexArray(quadArray);
-
-	struct QuadBuffer
-	{
-		zls::math::vec3 pos;
-		zls::math::vec2 uv;
-	};
-
-	const QuadBuffer quadBufferData[] =
-	{
-		{ { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f } },
-		{ { 1.0f, -1.0f, 0.0f }, { 1.0f, 0.0f } },
-		{ { -1.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } },
-		{ { 1.0f, 1.0f, 0.0f }, { 1.0f, 1.0f } }
-	};
-
-	gl::glGenBuffers(1, &quadVertexBuffer);
-	gl::glBindBuffer(GL_ARRAY_BUFFER, quadVertexBuffer);
-	gl::glBufferData(GL_ARRAY_BUFFER, sizeof(quadBufferData), quadBufferData, GL_STATIC_DRAW);
-	gl::glEnableVertexAttribArray(0); //Matches layout (location = 0)
-	gl::glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(QuadBuffer), 0);
-	gl::glEnableVertexAttribArray(1); //Matches layout (location = 1)
-	gl::glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(QuadBuffer), (void*)(3 * sizeof(float)));
-
-	quadVS = LoadShader(QuadVShaderFile, GL_VERTEX_SHADER);
-	
-	for (int i = 0; i < QS_COUNT; ++i)
-	{
-		quadFS[i] = LoadShader(QuadFShaderFile[i], GL_FRAGMENT_SHADER);
-		quadProgram[i] = LinkProgram(quadVS, quadFS[i]);
-
-		quadTex[i][0] = gl::glGetUniformLocation(quadProgram[i], "texLeft");
-		quadTex[i][1] = gl::glGetUniformLocation(quadProgram[i], "texRight");
-		swapEyesIdx[i] = gl::glGetUniformLocation(quadProgram[i], "swapEyes");
-		//quadMultiplier[i] = gl::glGetUniformLocation(quadProgram[i], "multiplier");
-	}
-#endif
-	stereoRenderInited = true;
-*/
-}
 
 void InitGeometry()
 {
@@ -731,9 +479,6 @@ int _tmain(int argc, _TCHAR* argv[])
 {
 	atexit(MyExit);
 
-	bool tryUseVr = false;
-	bool useVr = tryUseVr;
-
 	int PosCenterDisplay = SDL_WINDOWPOS_CENTERED_DISPLAY(0);
 #if defined(FULLSCREEN)
 	dispWidth = 1920;
@@ -766,9 +511,6 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	InitGraphics();
 
-	stereoRenderUsed = useVr;
-	setRenderFrame(Render, stereoRenderUsed);
-
 	//InitShaders
 	InitShaders();
 
@@ -780,15 +522,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	projMat.SetFrustum(1.0f, 100.f, 1.0f, -1.0f, -float(dispWidth)/float(dispHeight), float(dispWidth)/float(dispHeight));
 	viewMat.SetIdentity();
 	modelMat.SetIdentity();
-
-	//Render buffers (for VR)
-	bool useStereo = useVr;
-	if (useStereo)
-	{
-		unsigned int w = dispWidth >> 1;
-		unsigned int h = dispHeight;
-		InitStereoRender(w, h);
-	}
 
 #if defined(USE_GX_OPENGL)
 	cirTex = LoadTexture("Data/Textures/Circle.tga");
@@ -805,7 +538,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		dt = tick1 - tick0;
 		Events(dt);
 		
-		renderFrame();
+		monoRenderFrame();
 
 		modelMat.SetRotateX(rotActual);
 		if (rotate)
