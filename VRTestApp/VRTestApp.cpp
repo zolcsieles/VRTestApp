@@ -117,9 +117,6 @@ extern void setRenderFrame(void (render)(ZLS_Eye), bool isStereo);
 void MyExit()
 {
 	shutdownGX();
-#if defined(USE_OPENVR)
-	shutdownVR();
-#endif
 }
 
 bool swapEyes;
@@ -348,23 +345,6 @@ void stereoRenderFrame()
 	gl::glBindVertexArray(0);
 
 	gl::glUseProgram(0);
-#endif
-
-#if defined(USE_OPENVR)
-	gl::glFlush();
-	if (vrComp->CanRenderScene())
-	{
-		vr::Texture_t leftEyeTexture = { (void*)eyeTex[0], vr::API_OpenGL, vr::ColorSpace_Auto };
-		vr::Texture_t rightEyeTexture = { (void*)eyeTex[1], vr::API_OpenGL, vr::ColorSpace_Auto };
-		vr::VRCompositorError err;
-		err = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture, nullptr, vr::Submit_Default);
-		printVrCompositorError(err, "L");
-		err = vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture, nullptr, vr::Submit_Default);
-		printVrCompositorError(err, "R");
-		if (err == vr::VRCompositorError_None)
-			vr::VRCompositor()->PostPresentHandoff();
-		gl::glFinish();
-	}
 #endif
 
 	ir->SwapBuffers();
@@ -777,14 +757,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	WindowText += " - OpenGL4.1";
 #endif
 
-#if defined(USE_OPENVR)
-	WindowText += " - OpenVR"; 
-#endif
-
-#if defined(USE_OSVR)
-	WindowText += " - OSVR";
-#endif
-
 	if (!initGX(WindowText.c_str(), PosCenterDisplay, PosCenterDisplay, dispWidth, dispHeight, gxdrv))
 	{
 		ErrorExit("Unable to initialize GX system!\n");
@@ -794,13 +766,6 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	InitGraphics();
 
-#if defined(USE_OPENVR)
-	if (tryUseVr && !initVR())
-	{
-		Error("Unable to initialize VR system!\n");
-		useVr = false;
-	}
-#endif
 	stereoRenderUsed = useVr;
 	setRenderFrame(Render, stereoRenderUsed);
 
@@ -822,13 +787,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		unsigned int w = dispWidth >> 1;
 		unsigned int h = dispHeight;
-#if defined(USE_OPENVR)
-		if (useVr)
-		{
-			vrSys->GetRecommendedRenderTargetSize(&w, &h);
-			w >>= 1;
-		}
-#endif
 		InitStereoRender(w, h);
 	}
 
@@ -856,25 +814,3 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	return 0;
 }
-
-
-
-
-#if defined(USE_OPENVR)
-void printVrCompositorError(vr::VRCompositorError err, const char* side)
-{
-	Info("Side %s -> ", side);
-	switch (err)
-	{
-	case vr::VRCompositorError_None: Info("OK\n"); break;
-	case vr::VRCompositorError_IncompatibleVersion: Error("Incompatible Version\n"); break;
-	case vr::VRCompositorError_DoNotHaveFocus: Error("Do Not Have Focus\n"); break;
-	case vr::VRCompositorError_InvalidTexture: Error("Invalid Texture\n"); break;
-	case vr::VRCompositorError_IsNotSceneApplication: Error("Is Not Scene Application\n");  break;
-	case vr::VRCompositorError_TextureIsOnWrongDevice: Error("Texture Is On Wrong Device\n"); break;
-	case vr::VRCompositorError_TextureUsesUnsupportedFormat: Error("Texture Uses Unsupported Format\n");  break;
-	case vr::VRCompositorError_SharedTexturesNotSupported: Error("Shared TExture Not Supported\n"); break;
-	case vr::VRCompositorError_IndexOutOfRange: Error("Index Out Of Range\n"); break;
-	}
-}
-#endif
