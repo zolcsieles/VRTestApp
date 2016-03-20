@@ -3,8 +3,9 @@
 #include "Config.h"
 
 #include <SDL.h>
+#include <SDL_syswm.h>
 
-#ifdef USE_OPENGL
+#ifdef USE_GX_OPENGL
 #include "GL.h"
 #else //USE_DIRECT3D
 #endif

@@ -1,5 +1,9 @@
 #pragma once
 
+#include "Config.h"
+
+#ifdef USE_GX_OPENGL
+
 #define GL_GLEXT_LEGACY
 #include <SDL_opengl.h>
 #undef GL_VERSION_1_1
@@ -420,3 +424,5 @@ namespace gl
 
 void initGL();
 void testGLFUNCs();
+
+#endif

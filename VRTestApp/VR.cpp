@@ -3,6 +3,8 @@
 #include "VR.h"
 #include "ERR.h"
 
+#ifdef USE_OPENVR
+
 vr::IVRSystem* vrSys;
 vr::IVRCompositor* vrComp;
 vr::Texture_t eyeTextures[2];
@@ -33,6 +35,7 @@ bool initVR()
 
 	//	vrDisp = vr::VRExtendedDisplay();
 	vrComp = vr::VRCompositor();
+//	vr::SetGraphicsDevice();
 
 	return true;
 }
@@ -68,3 +71,5 @@ void shutdownVR()
 {
 	vr::VR_Shutdown();
 }
+
+#endif

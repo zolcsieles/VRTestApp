@@ -22,6 +22,9 @@
     <Filter Include="Header Files\zls_math">
       <UniqueIdentifier>{f6f92ca9-f784-41f2-95fc-6e3fc5222167}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\renderers">
+      <UniqueIdentifier>{066e7fff-c901-490c-b2c2-101c529e33a8}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ReadMe.txt" />
@@ -69,12 +72,18 @@
     <ClInclude Include="zls_math\zls_math_funcs.h">
       <Filter>Header Files\zls_math</Filter>
     </ClInclude>
+    <ClInclude Include="GLRenderer.h">
+      <Filter>Header Files\renderers</Filter>
+    </ClInclude>
+    <ClInclude Include="D3D11Renderer.h">
+      <Filter>Header Files\renderers</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonRenderer.h">
+      <Filter>Header Files\renderers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="VRTestApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="GX.cpp">
@@ -90,6 +99,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FS.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="VRTestApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -118,5 +130,13 @@
     <None Include="..\Working\Data\Shaders\simple_shaded.vs">
       <Filter>Data\Shaders</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\Working\Data\Shaders\simple.fs.hlsl">
+      <Filter>Data\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Working\Data\Shaders\simple.vs.hlsl">
+      <Filter>Data\Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

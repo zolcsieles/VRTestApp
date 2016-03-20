@@ -3,6 +3,8 @@
 #include "GX.h"
 #include "ERR.h"
 
+#include <string.h>
+
 SDL_Window* sdl_window = NULL;
 SDL_Renderer* sdl_renderer = NULL;
 
@@ -69,6 +71,5 @@ void GX_Clear()
 
 void GX_SwapBuffer()
 {
-	SDL_GL_SwapWindow(sdl_window);
 	SDL_RenderPresent(sdl_renderer);
 }

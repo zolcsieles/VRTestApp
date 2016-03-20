@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "GL.h"
 
+#ifdef USE_GX_OPENGL
 #include "SDL.h"
 #include "ERR.h"
 
@@ -33,3 +34,4 @@ void testGLFuncs()
 {
 #include "GL_PROCS.h"
 }
+#endif

@@ -1,16 +1,90 @@
 #include "stdafx.h"
 #include <windows.h>
 
+#include "Config.h"
 #include "GX.h"
-#include "VR.h"
+//#include "VR.h"
 #include "ERR.h"
+
+#if defined(USE_GX_OPENGL)
+
 #include "GL.h"
+
+#elif defined(USE_GX_D3D11)
+
+//#pragma comment(lib, "d2d1.lib")
+#pragma comment(lib, "d3d11.lib")
+//#pragma comment(lib, "dxgdi.lib")
+//#pragma comment(lib, "dwrite.lib")
+
+#include <d3d11_1.h>
+
+//Compiler:
+#include <d3dcompiler.h>
+#pragma comment(lib, "d3dcompiler.lib")
+
+#endif
+
 #include "FS.h"
 
 #include <math.h>
 #include "zls_math/zls_math.h"
 
 #include <map>
+
+#include "CommonRenderer.h"
+
+MyRenderer* ir;
+
+#if defined(USE_GX_D3D11)
+
+void initD3D11_1(HWND hWnd)
+{
+	DXGI_SWAP_CHAIN_DESC sd;
+	ZeroMemory(&sd, sizeof(sd));
+
+	sd.BufferCount = 1;
+	sd.BufferDesc.Width = 800;
+	sd.BufferDesc.Height = 600;
+	sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	sd.BufferDesc.RefreshRate.Numerator = 60;
+	sd.BufferDesc.RefreshRate.Denominator = 1;
+	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	sd.OutputWindow = hWnd;
+	sd.SampleDesc.Count = 1;
+	sd.SampleDesc.Quality = 0;
+	sd.Windowed = TRUE;
+
+	D3D_FEATURE_LEVEL FeatureLevels = D3D_FEATURE_LEVEL_11_1;
+	D3D_FEATURE_LEVEL FeatureLevel;
+
+	HRESULT hr = S_OK;
+	hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &FeatureLevels, 1, D3D11_SDK_VERSION, &sd, ir->GetSwapChainPtrPtr(), ir->GetDevicePtrPtr(), &FeatureLevel, ir->GetDeviceContextPtrPtr());
+
+	////Create Back buffer
+
+	//Get a pointer to the back buffer
+	ID3D11Texture2D* pBackBuffer;
+	hr = ir->GetSwapChainPtr()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+
+	//Create a render-target view
+	ir->GetDevicePtr()->CreateRenderTargetView(pBackBuffer, NULL, ir->GetRenderTargetViewPtrPtr());
+	pBackBuffer->Release();
+
+	//Bind the view
+	ir->GetDeviceContextPtr()->OMSetRenderTargets(1, ir->GetRenderTargetViewPtrPtr(), NULL);
+
+	D3D11_VIEWPORT vp;
+	vp.Width = 800;
+	vp.Height = 600;
+	vp.MinDepth = 0.0f;
+	vp.MaxDepth = 1.0f;
+	vp.TopLeftX = 0;
+	vp.TopLeftY = 0;
+	ir->GetDeviceContextPtr()->RSSetViewports(1, &vp);
+}
+
+#endif
 
 bool runing = true;
 bool stereoRenderInited = false;
@@ -43,7 +117,9 @@ extern void setRenderFrame(void (render)(ZLS_Eye), bool isStereo);
 void MyExit()
 {
 	shutdownGX();
+#if defined(USE_OPENVR)
 	shutdownVR();
+#endif
 }
 
 bool swapEyes;
@@ -131,71 +207,28 @@ void Events(float dt)
 	}
 }
 
-class IShader
-{
-public:
-	static std::map<std::string, IShader> shaders;
-	
-protected:
-};
-
-class IShaderGL : IShader
-{
-private:
-	GLuint shaderID;
-	
-protected:
-	GLuint GenerateID(GLenum shaderType)
-	{
-		if (IsValid())
-			return shaderID;
-		shaderID = gl::glCreateShader(shaderType);
-	}
-
-	void LoadShader(const char* fileName, GLenum shaderType)
-	{
-		//TODO: Find shader in shaders
-
-	}
-
-public:
-	bool IsValid()
-	{
-		return shaderID != 0;
-	}
-
-	GLuint GetID()
-	{
-		return shaderID;
-	}
-};
-
-template<GLenum shaderType>
-class Shader : IShader
-{
-public:
-	Shader() : shaderID(0)
-	{
-	}
-
-	void LoadShader(const char* fileName)
-	{
-	}
-};
-
 //Shaders and Programs
-GLuint vs, fs, simple;
+#if defined(USE_GX_OPENGL)
 GLuint modelMatIdx, viewMatIdx, projMatIdx;
 GLuint vertArrayObj;
 GLuint vertBuffer, indexBuffer;
-GLuint faceColorIdx;
-GLuint texIdx;
+//GLuint faceColorIdx;
+//GLuint texIdx;
+#elif defined(USE_GX_D3D11)
+ID3D11Buffer *vertBuffer, *indexBuffer;
+#endif
+
+MyVertexShader* vs;
+MyPixelShader* fs;
+MyShaderProgram* simple;
 
 zls::math::mat4 projMat;
 zls::math::mat4 viewMat;
 zls::math::mat4 modelMat;
 
+#if defined(USE_GX_OPENGL)
 GLuint cirTex;
+#endif
 
 enum QuadShader {
 	QS_INTERLACED = 0,
@@ -213,16 +246,21 @@ char* QuadVShaderFile = "Data/Shaders/quad_shader/quad.vs";
 
 const int N_STEREO = 2;
 
+#if defined(USE_GX_OPENGL)
 GLuint eyeRB[N_STEREO];
 GLuint eyeDepth[N_STEREO];
 GLuint eyeTex[N_STEREO];
-GLuint quadArray, quadVertexBuffer, quadProgram[QS_COUNT], quadVS, quadFS[QS_COUNT], quadTex[QS_COUNT][N_STEREO], swapEyesIdx[QS_COUNT]/*, quadMultiplier[QS_COUNT]*/;
+GLuint quadArray, quadVertexBuffer, quadProgram[QS_COUNT], quadVS, quadFS[QS_COUNT], quadTex[QS_COUNT][N_STEREO], swapEyesIdx[QS_COUNT];
+#endif
 
+//PINA
 void Render(ZLS_Eye act)
 {
-	gl::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	gl::glUseProgram(simple);
-	
+	ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
+	ir->ActivateProgram(simple);
+
+#if defined(USE_GX_OPENGL)
+/*	
 	gl::glActiveTexture(GL_TEXTURE0);
 	gl::glBindTexture(GL_TEXTURE_2D, cirTex);
 	gl::glProgramUniform1i(simple, texIdx, 0);
@@ -247,12 +285,23 @@ void Render(ZLS_Eye act)
 	gl::glUniformMatrix4fv(projMatIdx, 1, GL_FALSE, (GLfloat*)projMat());
 	gl::glUniformMatrix4fv(viewMatIdx, 1, GL_FALSE, (GLfloat*)viewMat());
 	gl::glUniformMatrix4fv(modelMatIdx, 1, GL_FALSE, (GLfloat*)modelMat());
-
+*/
 	gl::glBindVertexArray(vertArrayObj);
-	gl::glDrawElements(GL_TRIANGLES, 3*2*2*3, GL_UNSIGNED_INT, 0);
+	gl::glDrawElements(GL_TRIANGLES, 3*2, GL_UNSIGNED_INT, 0);
 	gl::glBindVertexArray(0);
 
 	gl::glUseProgram(0);
+#elif defined(USE_GX_D3D11)
+	UINT stride = sizeof(zls::math::vec3);
+	UINT offset = 0;
+	ir->GetDeviceContextPtr()->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+	ir->GetDeviceContextPtr()->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
+
+	ir->GetDeviceContextPtr()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	//ir->GetDeviceContextPtr()->Draw(3, 0);
+	ir->GetDeviceContextPtr()->DrawIndexed(3*2, 0, 0);
+#endif
 }
 
 void(*renderFrame)() = nullptr;
@@ -261,14 +310,21 @@ void(*renderSubFrame)(ZLS_Eye) = nullptr;
 void stereoRenderFrame()
 {
 	//Render left
+#if defined(USE_GX_OPENGL)
 	gl::glBindFramebuffer(GL_FRAMEBUFFER, eyeRB[0]);
 	gl::glViewport(0, 0, iEyeWidth, iEyeHeight);
+#endif
 	renderSubFrame(Eye_Left);
 
 	//Render right
+#if defined(USE_GX_OPENGL)
 	gl::glBindFramebuffer(GL_FRAMEBUFFER, eyeRB[1]);
 	gl::glViewport(0, 0, iEyeWidth, iEyeHeight);
+#endif
 	renderSubFrame(Eye_Right);
+
+#if defined(USE_GX_OPENGL)
+	gl::glBindTexture(GL_TEXTURE_2D, 0);
 
 	//Render screen
 	gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -292,18 +348,38 @@ void stereoRenderFrame()
 	gl::glBindVertexArray(0);
 
 	gl::glUseProgram(0);
-	GX_SwapBuffer();
+#endif
+
+#if defined(USE_OPENVR)
+	gl::glFlush();
+	if (vrComp->CanRenderScene())
+	{
+		vr::Texture_t leftEyeTexture = { (void*)eyeTex[0], vr::API_OpenGL, vr::ColorSpace_Auto };
+		vr::Texture_t rightEyeTexture = { (void*)eyeTex[1], vr::API_OpenGL, vr::ColorSpace_Auto };
+		vr::VRCompositorError err;
+		err = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture, nullptr, vr::Submit_Default);
+		printVrCompositorError(err, "L");
+		err = vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture, nullptr, vr::Submit_Default);
+		printVrCompositorError(err, "R");
+		if (err == vr::VRCompositorError_None)
+			vr::VRCompositor()->PostPresentHandoff();
+		gl::glFinish();
+	}
+#endif
+
+	ir->SwapBuffers();
 }
 
 void monoRenderFrame()
 {
 	//Render screen
+#if defined(USE_GX_OPENGL)
 	gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	gl::glViewport(0, 0, dispWidth, dispHeight);
-
+#endif
 	renderSubFrame(Eye_Center);
 
-	GX_SwapBuffer();
+	ir->SwapBuffers();
 }
 
 void setRenderFrame(void (render)(ZLS_Eye), bool isStereo)
@@ -319,6 +395,7 @@ void setRenderFrame(void (render)(ZLS_Eye), bool isStereo)
 	renderSubFrame = render;
 }
 
+#if defined(USE_GX_OPENGL)
 GLuint LoadShader(const char* fileName, GLenum shaderType)
 {
 	Info("Loading shader: %s\n", fileName);
@@ -333,10 +410,13 @@ GLuint LoadShader(const char* fileName, GLenum shaderType)
 	gl::glCompileShader(sh);
 	gl::glGetShaderInfoLog(sh, 65535, NULL, temp);
 	if (temp[0]) { Warning("Shader Log: %s\n", temp); }
+	delete[] con;
 
 	return sh;
 }
+#endif
 
+#if defined(USE_GX_OPENGL)
 GLuint LoadTexture(const char* fileName)
 {
 	char* con;
@@ -384,68 +464,64 @@ GLuint LoadTexture(const char* fileName)
 	GLuint tex;
 	gl::glGenTextures(1, &tex);
 	gl::glBindTexture(GL_TEXTURE_2D, tex);
-	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tgaHeader->is_iWidth, tgaHeader->is_iHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, ptr0);
+	//gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tgaHeader->is_iWidth, tgaHeader->is_iHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, ptr0);
+	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, tgaHeader->is_iWidth, tgaHeader->is_iHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, ptr0);
 	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	return tex;
 }
+#endif
 
-GLuint LinkProgram(GLuint vertShader, GLuint fragShader)
-{
-	char temp[4096];
-	GLuint prg = gl::glCreateProgram();
-
-	gl::glAttachShader(prg, fragShader);
-	gl::glAttachShader(prg, vertShader);
-	gl::glLinkProgram(prg);
-	gl::glGetProgramInfoLog(prg, 65535, NULL, temp);
-	if (temp[0]) { Warning("Program Log: %s\n", temp); }
-
-	return prg;
-}
-
-void CreateAndLinkProgram(const char* vertexShaderFile, const char* fragShaderFile, GLuint* vertShader, GLuint* fragShader, GLuint* prog)
-{
-	*vertShader = LoadShader(vertexShaderFile, GL_VERTEX_SHADER);
-	*fragShader = LoadShader(fragShaderFile, GL_FRAGMENT_SHADER);
-	*prog = LinkProgram(*vertShader, *fragShader);
-}
-
+#if defined(USE_GX_OPENGL)
 bool InitRenderBuffer(GLuint& rb, GLuint& tx, GLuint& zb, int eyeWidth, int eyeHeight)
 {
 	gl::glBindFramebuffer(GL_FRAMEBUFFER, rb);
 
 	gl::glBindTexture(GL_TEXTURE_2D, tx);
-	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, eyeWidth, eyeHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	//gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, eyeWidth, eyeHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, eyeWidth, eyeHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-	gl::glBindRenderbuffer(GL_RENDERBUFFER, zb);
-	gl::glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, eyeWidth, eyeHeight);
-	gl::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, zb);
-	gl::glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tx, 0);
+	gl::glBindTexture(GL_TEXTURE_2D, zb);
+	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, eyeWidth, eyeHeight, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, nullptr);
+	//gl::glBindRenderbuffer(GL_RENDERBUFFER, zb);
+	//gl::glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, eyeWidth, eyeHeight);
+	//gl::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, zb);
+	//gl::glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, tx, 0);
 
-	GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-	gl::glDrawBuffers(1, DrawBuffers);
+	//GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+	//gl::glDrawBuffers(1, DrawBuffers);
 
-	if (gl::glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		return false;
+	gl::glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tx, 0);
+	gl::glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, zb, 0);
+
+	//if (gl::glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	//	return false;
 
 	iEyeWidth = eyeWidth;
 	iEyeHeight = eyeHeight;
-
 	return true;
 }
+#endif
 
 void InitStereoRender(int eyeWidth, int eyeHeight)
 {
+/*
 	if (stereoRenderInited)
 		return;
-
+#if defined(USE_GX_OPENGL)
 	gl::glGenFramebuffers(2, eyeRB);
 	gl::glGenTextures(2, eyeTex);
-	gl::glGenRenderbuffers(2, eyeDepth);
+	//gl::glGenRenderbuffers(2, eyeDepth);
+	gl::glGenTextures(2, eyeDepth);
 	for (int i = 0; i < 2; ++i)
 	{
 		if (!InitRenderBuffer(eyeRB[i], eyeTex[i], eyeDepth[i], eyeWidth, eyeHeight))
@@ -493,34 +569,32 @@ void InitStereoRender(int eyeWidth, int eyeHeight)
 		swapEyesIdx[i] = gl::glGetUniformLocation(quadProgram[i], "swapEyes");
 		//quadMultiplier[i] = gl::glGetUniformLocation(quadProgram[i], "multiplier");
 	}
-	
+#endif
 	stereoRenderInited = true;
+*/
 }
 
 void InitGeometry()
 {
-	gl::glGenVertexArrays(1, &vertArrayObj);
-	gl::glBindVertexArray(vertArrayObj); //VertexArrayObject
-
-	gl::glGenBuffers(1, &vertBuffer);
-	gl::glGenBuffers(1, &indexBuffer);
-
-#ifdef TRIANGLE
+#define TRIANGLE
+#if defined(TRIANGLE)
 	struct Vert {
-		float x, y, z;
+		zls::math::vec3 v_pos;
 	};
-	const int nVertices = 3;
+	const int nVertices = 4;
 	Vert v_buffer[nVertices] =
 	{
-		{-0.25f,  0.5f, -1.0f },
-		{-0.5f, -0.5f, -1.0f },
-		{ 0.5f, -0.5f, -1.0f }
+		{ { -0.25f, 0.5f, 0.0f } }, //0
+		{ { -0.5f, -0.5f, 0.0f } }, //1
+		{ { 0.5f, -0.5f, 0.0f } }, //2
+		{ { 0.75f, 0.5f, 0.0f} }, //3
 	};
 
-	const int nIndices = 3;
+	const int nIndices = 6;
 	unsigned int i_buffer[nIndices] =
 	{
-		0, 1, 2
+		0, 2, 3,
+		0, 2, 1
 	};
 #else
 	const int nVertices = 8;
@@ -541,87 +615,194 @@ void InitGeometry()
 		{ { +5.0f, +5.0f, +5.0f }, { 1.0f, 1.0f } }  //7
 	};
 
-	const int nIndices = 3*2*2*3;
+	const int nIndices = 3 * 2 * 2 * 3;
 	unsigned int i_buffer[] =
 	{
-		0, 1, 2,
+		1, 0, 2,
 		1, 2, 3,
 		4, 5, 6,
-		5, 6, 7,
+		6, 5, 7,
 
 		0, 1, 4,
-		1, 4, 5,
-		2, 3, 6,
+		4, 1, 5,
+		3, 2, 6,
 		3, 6, 7,
 
-		0, 2, 4,
+		2, 0, 4,
 		2, 4, 6,
 		1, 3, 5,
-		3, 5, 7,
+		5, 3, 7,
 	};
 #endif
 
+
+#if defined(USE_GX_OPENGL)
+	gl::glGenVertexArrays(1, &vertArrayObj);
+	gl::glBindVertexArray(vertArrayObj); //VertexArrayObject
+
+	gl::glGenBuffers(1, &vertBuffer);
+	gl::glGenBuffers(1, &indexBuffer);
+#elif defined(USE_GX_D3D11)
+	//VERTEX
+	D3D11_BUFFER_DESC vbd;
+	vbd.Usage = D3D11_USAGE_DEFAULT;
+	vbd.ByteWidth = sizeof(Vert)*nVertices;
+	vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vbd.CPUAccessFlags = 0;
+	vbd.MiscFlags = 0;
+
+	//
+	D3D11_SUBRESOURCE_DATA vdat;
+	vdat.pSysMem = v_buffer;
+	vdat.SysMemPitch = 0;
+	vdat.SysMemSlicePitch = 0;
+
+	HRESULT hr = ir->GetDevicePtr()->CreateBuffer(&vbd, &vdat, &vertBuffer);
+
+	//INDEX
+	D3D11_BUFFER_DESC ibd;
+	ibd.Usage = D3D11_USAGE_DEFAULT;
+	ibd.ByteWidth = sizeof(unsigned int)*nIndices;
+	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	ibd.CPUAccessFlags = 0;
+	ibd.MiscFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA idat;
+	idat.pSysMem = i_buffer;
+	idat.SysMemPitch = 0;
+	idat.SysMemSlicePitch = 0;
+
+	hr = ir->GetDevicePtr()->CreateBuffer(&ibd, &idat, &indexBuffer);
+#endif
+
+#if defined(USE_GX_OPENGL)
 	gl::glBindBuffer(GL_ARRAY_BUFFER, vertBuffer);
 	gl::glBufferData(GL_ARRAY_BUFFER, sizeof(Vert)*nVertices, v_buffer, GL_STATIC_DRAW);
 	gl::glEnableVertexAttribArray(0); //Matches layout (location = 0)
 	gl::glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vert), 0);
-	gl::glEnableVertexAttribArray(1);
-	gl::glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), (void*)(3*sizeof(float)));
+/*	gl::glEnableVertexAttribArray(1);
+	gl::glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vert), (void*)(3*sizeof(float)));*/
 
 	gl::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
 	gl::glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)*nIndices, i_buffer, GL_STATIC_DRAW);
 	gl::glBindVertexArray(0); //VertexArrayObject
+#endif
+}
+
+void InitShadedShaders()
+{
+#if defined(USE_GX_OPENGL)
+//	CreateAndLinkProgram("Data/Shaders/simple_shaded.vs", "Data/Shaders/simple_shaded.fs", &vs, &fs, &simple);
+//	modelMatIdx = gl::glGetUniformLocation(simple, "modelMat");
+//	viewMatIdx = gl::glGetUniformLocation(simple, "viewMat");
+//	projMatIdx = gl::glGetUniformLocation(simple, "projMat");
+//	faceColorIdx = gl::glGetUniformLocation(simple, "faceColor");
+//	texIdx = gl::glGetUniformLocation(simple, "tex");
+#elif defined(USE_GX_D3D11)
+	
+#endif
 }
 
 void InitShaders()
 {
-	CreateAndLinkProgram("Data/Shaders/simple_shaded.vs", "Data/Shaders/simple_shaded.fs", &fs, &vs, &simple);
-	modelMatIdx = gl::glGetUniformLocation(simple, "modelMat");
-	viewMatIdx = gl::glGetUniformLocation(simple, "viewMat");
-	projMatIdx = gl::glGetUniformLocation(simple, "projMat");
-	faceColorIdx = gl::glGetUniformLocation(simple, "faceColor");
-	texIdx = gl::glGetUniformLocation(simple, "tex");
+	vs = ir->CreateVertexShaderFromSourceFile("Data/Shaders/simple.vs");
+	fs = ir->CreatePixelShaderFromSourceFile("Data/Shaders/simple.fs");
+#if defined(USE_GX_D3D11)
+	ID3D11InputLayout *ilay;
+	D3D11_INPUT_ELEMENT_DESC ied[] =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
+	HRESULT hr = ir->GetDevicePtr()->CreateInputLayout(ied, 1, vs->GetBlob()->GetBufferPointer(), vs->GetBlob()->GetBufferSize(), &ilay);
+	ir->GetDeviceContextPtr()->IASetInputLayout(ilay);
+#endif
+	simple = ir->CreateShaderProgram(vs, fs);
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+void InitGraphics()
 {
-	atexit(MyExit);
-
-	zls::math::mat2 mat;
-
-
-	bool tryUseVr = false;
-	bool useVr = tryUseVr;
-
-	if (tryUseVr && !initVR())
-	{
-		Error("Unable to initialize VR system!\n");
-		useVr = false;
-	}
-	setRenderFrame(Render, useVr);
-
-	int PosCenterDisplay = SDL_WINDOWPOS_CENTERED_DISPLAY(1);
-#ifdef FULLSCREEN
-	dispWidth = 1920;
-	dispHeight = 1080;
-#endif
-
-	if (!initGX("Punci", PosCenterDisplay, PosCenterDisplay, dispWidth, dispHeight, GX_OGL))
-	{
-		ErrorExit("Unable to initialize GX system!\n");
-	}
-
+#if defined(USE_GX_OPENGL)
 	if (!SDL_GL_CreateContext(sdl_window))
 	{
 		ErrorExit("Unable to create GL Context.");
 	}
 
 	initGL();
+
 	Info("Vendor: %s\n", gl::glGetString(GL_VENDOR));
 	Info("Renderer: %s\n", gl::glGetString(GL_RENDERER));
 	Info("Version: %s\n", gl::glGetString(GL_VERSION));
 	Info("GL Shading Language Version: %s\n", gl::glGetString(GL_SHADING_LANGUAGE_VERSION));
 	//Info("GL Extensions: %s\n", gl::glGetString(GL_EXTENSIONS));
+
+	gl::glEnable(GL_DEPTH_TEST);
+	gl::glFrontFace(GL_CW);
+	gl::glCullFace(GL_BACK);
+	gl::glEnable(GL_CULL_FACE);
+#else
+	SDL_SysWMinfo wmInfo;
+	SDL_VERSION(&wmInfo.version);
+	SDL_GetWindowWMInfo(sdl_window, &wmInfo);
+	initD3D11_1(wmInfo.info.win.window);
+#endif
+}
+
+int _tmain(int argc, _TCHAR* argv[])
+{
+	atexit(MyExit);
+
+	bool tryUseVr = false;
+	bool useVr = tryUseVr;
+
+	int PosCenterDisplay = SDL_WINDOWPOS_CENTERED_DISPLAY(0);
+#if defined(FULLSCREEN)
+	dispWidth = 1920;
+	dispHeight = 1080;
+#endif
+
+	GxDriver gxdrv;
+#if defined(USE_GX_OPENGL)
+	gxdrv = GX_OGL;
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 4);
+#elif defined(USE_GX_D3D11)
+	gxdrv = GX_D3D;
+#endif
+
+	std::string WindowText("RenderWindow");
+
+#if defined(USE_GX_D3D11)
+	WindowText += " - D3D11";
+#elif defined(USE_GX_OPENGL)
+	WindowText += " - OpenGL4.1";
+#endif
+
+#if defined(USE_OPENVR)
+	WindowText += " - OpenVR"; 
+#endif
+
+#if defined(USE_OSVR)
+	WindowText += " - OSVR";
+#endif
+
+	if (!initGX(WindowText.c_str(), PosCenterDisplay, PosCenterDisplay, dispWidth, dispHeight, gxdrv))
+	{
+		ErrorExit("Unable to initialize GX system!\n");
+	}
+
+	ir = new MyRenderer();
+
+	InitGraphics();
+
+#if defined(USE_OPENVR)
+	if (tryUseVr && !initVR())
+	{
+		Error("Unable to initialize VR system!\n");
+		useVr = false;
+	}
+#endif
+	stereoRenderUsed = useVr;
+	setRenderFrame(Render, stereoRenderUsed);
 
 	//InitShaders
 	InitShaders();
@@ -639,25 +820,35 @@ int _tmain(int argc, _TCHAR* argv[])
 	bool useStereo = useVr;
 	if (useStereo)
 	{
-		InitStereoRender(dispWidth>>1, dispHeight);
+		unsigned int w = dispWidth >> 1;
+		unsigned int h = dispHeight;
+#if defined(USE_OPENVR)
+		if (useVr)
+		{
+			vrSys->GetRecommendedRenderTargetSize(&w, &h);
+			w >>= 1;
+		}
+#endif
+		InitStereoRender(w, h);
 	}
 
-	gl::glEnable(GL_DEPTH_TEST);
-	gl::glFrontFace(GL_CW);
-	gl::glCullFace(GL_FRONT_FACE);
+#if defined(USE_GX_OPENGL)
+	cirTex = LoadTexture("Data/Textures/Circle.tga");
+#endif
 
 	float tick0, tick1, dt;
-
-	cirTex = LoadTexture("Data/Textures/Circle.tga");
-
 	tick0 = tick1 = GetTickCount() * (1.0f / 1000.0f);
+
+	ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
 	while (runing)
 	{
 		tick0 = tick1;
 		tick1 = GetTickCount() * (1.0f / 1000.0f);
 		dt = tick1 - tick0;
 		Events(dt);
+		
 		renderFrame();
+
 		modelMat.SetRotateX(rotActual);
 		if (rotate)
 			rotActual += rotSpeed*dt;
@@ -665,3 +856,25 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	return 0;
 }
+
+
+
+
+#if defined(USE_OPENVR)
+void printVrCompositorError(vr::VRCompositorError err, const char* side)
+{
+	Info("Side %s -> ", side);
+	switch (err)
+	{
+	case vr::VRCompositorError_None: Info("OK\n"); break;
+	case vr::VRCompositorError_IncompatibleVersion: Error("Incompatible Version\n"); break;
+	case vr::VRCompositorError_DoNotHaveFocus: Error("Do Not Have Focus\n"); break;
+	case vr::VRCompositorError_InvalidTexture: Error("Invalid Texture\n"); break;
+	case vr::VRCompositorError_IsNotSceneApplication: Error("Is Not Scene Application\n");  break;
+	case vr::VRCompositorError_TextureIsOnWrongDevice: Error("Texture Is On Wrong Device\n"); break;
+	case vr::VRCompositorError_TextureUsesUnsupportedFormat: Error("Texture Uses Unsupported Format\n");  break;
+	case vr::VRCompositorError_SharedTexturesNotSupported: Error("Shared TExture Not Supported\n"); break;
+	case vr::VRCompositorError_IndexOutOfRange: Error("Index Out Of Range\n"); break;
+	}
+}
+#endif
