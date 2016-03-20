@@ -271,20 +271,6 @@ void InitGeometry()
 #endif
 }
 
-void InitShadedShaders()
-{
-#if defined(USE_GX_OPENGL)
-//	CreateAndLinkProgram("Data/Shaders/simple_shaded.vs", "Data/Shaders/simple_shaded.fs", &vs, &fs, &simple);
-//	modelMatIdx = gl::glGetUniformLocation(simple, "modelMat");
-//	viewMatIdx = gl::glGetUniformLocation(simple, "viewMat");
-//	projMatIdx = gl::glGetUniformLocation(simple, "projMat");
-//	faceColorIdx = gl::glGetUniformLocation(simple, "faceColor");
-//	texIdx = gl::glGetUniformLocation(simple, "tex");
-#elif defined(USE_GX_D3D11)
-	
-#endif
-}
-
 void InitShaders()
 {
 	vs = ir->CreateVertexShaderFromSourceFile("Data/Shaders/simple.vs");
