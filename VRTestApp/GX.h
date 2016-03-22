@@ -5,13 +5,27 @@
 #include <SDL.h>
 #include <SDL_syswm.h>
 
+#include <vector>
+
 #ifdef USE_GX_OPENGL
 #include "GL.h"
 #else //USE_DIRECT3D
 #endif
 
-extern SDL_Window* sdl_window;
-extern SDL_Renderer* sdl_renderer;
+struct Window
+{
+	Window() : window(nullptr), renderer(nullptr)
+	{
+	}
+
+	SDL_Window* window;
+	SDL_Renderer* renderer;
+};
+
+extern Window gx_main;
+extern Window gx_sub;
+
+extern std::vector<Window*> gx_wins;
 
 enum GxDriver {
 	GX_D3D,
@@ -23,7 +37,8 @@ extern const char* GxStrDriver[];
 
 const int PosCenter = SDL_WINDOWPOS_CENTERED;
 
-bool initGX(const char* Title, int PosX, int PosY, int Width, int Height, GxDriver Driver);
+bool initGXMain(const char* Title, int PosX, int PosY, int Width, int Height, GxDriver Driver);
+bool initGXSub(const char* Title, int PosX, int PosY, int Width, int Height, GxDriver Driver);
 void shutdownGX();
 
 void GX_Clear();

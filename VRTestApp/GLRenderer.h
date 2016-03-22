@@ -42,10 +42,15 @@ public:
 		gl::glClear(mask);
 	}
 
+	void SetViewport(int x, int y, int width, int height)
+	{
+		gl::glViewport(x, y, width, height);
+	}
+
 	void SwapBuffers()
 	{
 		//SDL
-		SDL_GL_SwapWindow(sdl_window);
+		SDL_GL_SwapWindow(gx_main.window);
 	}
 
 	//Program
@@ -101,7 +106,9 @@ public:
 
 };
 
+
 typedef GLRenderer MyRenderer;
 typedef GLVertexShader MyVertexShader;
 typedef GLFragmentShader MyPixelShader;
 typedef GLShaderProgram MyShaderProgram;
+

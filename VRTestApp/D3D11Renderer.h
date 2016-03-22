@@ -34,6 +34,18 @@ public:
 		devcon->ClearRenderTargetView(rtv, mClearColor);
 	}
 
+	void SetViewport(int x, int y, int width, int height)
+	{
+		D3D11_VIEWPORT vp;
+		vp.TopLeftX = float(x);
+		vp.TopLeftY = float(y);
+		vp.Width = float(width);
+		vp.Height = float(height);
+		vp.MinDepth = 0.0f;
+		vp.MaxDepth = 0.0f;
+		devcon->RSSetViewports(1, &vp);
+	}
+
 	void SwapBuffers()
 	{
 		swapchain->Present(0, 0);
@@ -68,6 +80,7 @@ public:
 		}
 		else
 		{
+			Warning("Shader Log: %s\n", errorBlob->GetBufferPointer());
 			errorBlob->Release();
 		}
 
@@ -122,7 +135,9 @@ public:
 	ID3D11RenderTargetView** GetRenderTargetViewPtrPtr() { return &rtv; }
 };
 
+
 typedef D3DRenderer MyRenderer;
 typedef D3DVertexShader MyVertexShader;
 typedef D3DPixelShader MyPixelShader;
 typedef D3DShaderProgram MyShaderProgram;
+
