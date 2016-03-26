@@ -50,7 +50,7 @@ public:
 	void SwapBuffers()
 	{
 		//SDL
-		SDL_GL_SwapWindow(gx_main.window);
+		SDL_GL_SwapWindow(gx_wins[GX_OGL].window);
 	}
 
 	//Program
@@ -106,9 +106,9 @@ public:
 
 };
 
-
+/*
 typedef GLRenderer MyRenderer;
 typedef GLVertexShader MyVertexShader;
 typedef GLFragmentShader MyPixelShader;
 typedef GLShaderProgram MyShaderProgram;
-
+*/

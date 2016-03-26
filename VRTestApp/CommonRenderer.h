@@ -108,6 +108,13 @@ struct FormatDesc_FormatD3D<3, float>
 {
 	static const DXGI_FORMAT DXGIFormat = DXGI_FORMAT_R32G32B32_FLOAT;
 };
+
+template<>
+struct FormatDesc_FormatD3D<1, unsigned int>
+{
+	static const DXGI_FORMAT DXGIFormat = DXGI_FORMAT_R32_UINT;
+};
+
 #endif
 #if defined (USE_GX_OPENGL)
 template<typename _tElem>
@@ -117,6 +124,7 @@ struct FormatDesc_GLType
 };
 
 template<> const GLenum FormatDesc_GLType<float>::GLType = GL_FLOAT;
+template<> const GLenum FormatDesc_GLType<unsigned int>::GLType = GL_UNSIGNED_INT;
 
 #endif
 
@@ -167,3 +175,24 @@ struct FormatDesc/* : FormatDesc_FormatD3D<_nElems, _tElem>, FormatDescSemanticN
 template<FormatDescSemantic Semantic, unsigned int SemanticIndex, int _nElems, typename _tElem, unsigned int InputSlot, unsigned int AlignedByteOffset, unsigned int InstanceDataStepRate, unsigned int _nOffset>
 const char* FormatDesc<Semantic, SemanticIndex, _nElems, _tElem, InputSlot, AlignedByteOffset, InstanceDataStepRate, _nOffset>::Name = FormatDesc_SemanticName<Semantic>::Name;
 #endif
+
+
+enum PRIMITIVE_TOPOLOGY
+{
+	PT_TRIANGLE_LIST,
+	PT_TRIANGLE_STRIP,
+};
+
+template<PRIMITIVE_TOPOLOGY renderType>
+struct PrimitiveTopology
+{
+	static const D3D_PRIMITIVE_TOPOLOGY DXTopology = 0;
+	static const GLenum GLTopology = 0;
+};
+
+template<>
+struct PrimitiveTopology<PT_TRIANGLE_LIST>
+{
+	static const D3D_PRIMITIVE_TOPOLOGY DXTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	static const GLenum GLTopology = GL_TRIANGLES;
+};

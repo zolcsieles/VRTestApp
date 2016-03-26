@@ -135,9 +135,9 @@ public:
 	ID3D11RenderTargetView** GetRenderTargetViewPtrPtr() { return &rtv; }
 };
 
-
+/*
 typedef D3DRenderer MyRenderer;
 typedef D3DVertexShader MyVertexShader;
 typedef D3DPixelShader MyPixelShader;
 typedef D3DShaderProgram MyShaderProgram;
-
+*/

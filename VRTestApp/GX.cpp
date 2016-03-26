@@ -5,12 +5,9 @@
 
 #include <string.h>
 
-Window gx_main;
-Window gx_sub;
+Window gx_wins[GX_DRV_COUNT];
 
-std::vector<Window*> gx_wins;
-
-const char* GxStrDriver[] = {
+const char* GxStrDriver[GX_DRV_COUNT] = {
 	"direct3d",
 	"opengl",
 	"opengles2",
@@ -54,39 +51,34 @@ bool initGX2(const char* Title, int PosX, int PosY, int Width, int Height, GxDri
 	int driverIdx = GetDriverIndex(Driver);
 	wnd->renderer = SDL_GetRenderer(wnd->window);
 
-	gx_wins.push_back(wnd);
-
 	SDL_SetRenderDrawColor(wnd->renderer, 128, 128, 128, 128);
 	return true;
 }
 
-bool initGXMain(const char* Title, int PosX, int PosY, int Width, int Height, GxDriver Driver)
+bool initGX(const char* Title, int PosX, int PosY, int Width, int Height, GxDriver Driver)
 {
-	SDL_Init(SDL_INIT_VIDEO);
-	return initGX2(Title, PosX, PosY, Width, Height, Driver, &gx_main);
+	return initGX2(Title, PosX, PosY, Width, Height, Driver, &gx_wins[Driver]);
 }
 
-bool initGXSub(const char* Title, int PosX, int PosY, int Width, int Height, GxDriver Driver)
-{
-	return initGX2(Title, PosX, PosY, Width, Height, Driver, &gx_sub);
-}
 
 void shutdownGX()
 {
-	for (std::vector<Window*>::iterator it = gx_wins.begin(); it != gx_wins.end(); ++it)
+	for (int i = 0; i < GX_DRV_COUNT; ++i)
 	{
-		SDL_DestroyRenderer((*it)->renderer);
-		SDL_DestroyWindow((*it)->window);
+		if (gx_wins[i].renderer != nullptr)
+			SDL_DestroyRenderer(gx_wins[i].renderer);
+		if (gx_wins[i].window != nullptr)
+			SDL_DestroyWindow(gx_wins[i].window);
 	}
 	SDL_Quit();
 }
 
 void GX_Clear()
 {
-	SDL_RenderClear(gx_wins[0]->renderer);
+	SDL_RenderClear(gx_wins[GX_OGL].renderer);
 }
 
 void GX_SwapBuffer()
 {
-	SDL_RenderPresent(gx_wins[0]->renderer);
+	SDL_RenderPresent(gx_wins[GX_OGL].renderer);
 }

@@ -22,23 +22,20 @@ struct Window
 	SDL_Renderer* renderer;
 };
 
-extern Window gx_main;
-extern Window gx_sub;
-
-extern std::vector<Window*> gx_wins;
-
 enum GxDriver {
 	GX_D3D,
 	GX_OGL,
 	GX_GLES,
-	GX_SW
+	GX_SW,
+	GX_DRV_COUNT
 };
-extern const char* GxStrDriver[];
+
+extern Window gx_wins[GX_DRV_COUNT];
+extern const char* GxStrDriver[GX_DRV_COUNT];
 
 const int PosCenter = SDL_WINDOWPOS_CENTERED;
 
-bool initGXMain(const char* Title, int PosX, int PosY, int Width, int Height, GxDriver Driver);
-bool initGXSub(const char* Title, int PosX, int PosY, int Width, int Height, GxDriver Driver);
+bool initGX(const char* Title, int PosX, int PosY, int Width, int Height, GxDriver Driver);
 void shutdownGX();
 
 void GX_Clear();
