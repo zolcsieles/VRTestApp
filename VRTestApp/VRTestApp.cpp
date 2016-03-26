@@ -255,7 +255,7 @@ public:
 		sd.SampleDesc.Quality = 0;
 		sd.Windowed = TRUE;
 
-		D3D_FEATURE_LEVEL FeatureLevels = D3D_FEATURE_LEVEL_11_1;
+		D3D_FEATURE_LEVEL FeatureLevels = D3D_FEATURE_LEVEL_11_0;
 		D3D_FEATURE_LEVEL FeatureLevel;
 
 		HRESULT hr = S_OK;
@@ -492,7 +492,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	gxdrv.push_back(GX_D3D);
 #endif
 
-	const int fullWidth = 1440;
+	const int fullWidth = 1366;
 	int dw = dispWidth + 10;
 	int x = (fullWidth>>1)-(gxdrv.size()&1)*(dispWidth>>1)-(dw*(gxdrv.size()));
 
