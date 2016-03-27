@@ -70,7 +70,6 @@ bool runing = true;
 int dispWidth = 640;
 int dispHeight = 480;
 
-
 FormatDesc<FDS_POSITION, 0, 3, float, 0, 0, 0, 0> posDesc;
 FormatDesc<FDS_COLOR, 0, 3, float, 0, posDesc.nByteSize, 0, posDesc.nByteEndPos> colorDesc;
 FormatDesc<FDS_COLOR, 1, 3, float, 1, 0, 0, 0> color2Desc;
@@ -316,7 +315,7 @@ public:
 void GLAPP::Render()
 {
 	gl::glBindVertexArray(vertArrayObj);
-	gl::glDrawElements(PrimitiveTopology<PT_TRIANGLE_LIST>::GLTopology, nIndices, FormatDesc_GLType<unsigned int>::GLType, 0);
+	gl::glDrawElements(PrimitiveTopology<PT_TRIANGLE_LIST>::GLTopology, nIndices, FormatDescType<0,unsigned int>::GLType, 0);
 	gl::glBindVertexArray(0);
 
 	gl::glUseProgram(0);
@@ -327,7 +326,7 @@ void DXAPP::Render()
 	UINT stride = sizeof(zls::math::vec3) * 2;
 	UINT strideCol = sizeof(zls::math::vec3);
 	UINT offset = 0;
-	ir->GetDeviceContextPtr()->IASetIndexBuffer(indexBuffer, FormatDesc_FormatD3D<1, unsigned int>::DXGIFormat, 0);
+	ir->GetDeviceContextPtr()->IASetIndexBuffer(indexBuffer, FormatDescType<1, unsigned int>::DXGIFormat, 0);
 	ir->GetDeviceContextPtr()->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
 	ir->GetDeviceContextPtr()->IASetVertexBuffers(1, 1, &colorBuffer, &strideCol, &offset);
 

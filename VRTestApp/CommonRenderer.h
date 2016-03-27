@@ -73,60 +73,40 @@ public:
 
 #if defined(USE_GX_OPENGL)
 #include "GLRenderer.h"
+#define GL(x) x
+#else
+#define GL(x) 
 #endif
 #if defined (USE_GX_D3D11)
 #include "D3D11Renderer.h"
+#define DX(x) x
+#else
+#define DX(x)
 #endif
 
-template<typename _tElems>
-struct FormatDesc_Type
+struct FormatDescBase 
 {
-	typedef _tElems ElemType;
 };
 
-template<unsigned int _nElems>
-struct FormatDesc_Elems
-{
-	static const unsigned int nElems = _nElems;
-};
-
-template<int _nElems, typename _tElem>
-struct FormatDesc_Size
-{
-	static const int Size = _nElems*sizeof(_tElem);
-};
-
-#if defined(USE_GX_D3D11)
-template<int _nElems, typename _tElem>
-struct FormatDesc_FormatD3D
-{
-	static const DXGI_FORMAT DXGIFormat;
-};
-
-template<>
-struct FormatDesc_FormatD3D<3, float>
-{
-	static const DXGI_FORMAT DXGIFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-};
-
-template<>
-struct FormatDesc_FormatD3D<1, unsigned int>
-{
-	static const DXGI_FORMAT DXGIFormat = DXGI_FORMAT_R32_UINT;
-};
-
-#endif
-#if defined (USE_GX_OPENGL)
 template<typename _tElem>
-struct FormatDesc_GLType
+struct FormatDescTypeGL : FormatDescBase
 {
 	static const GLenum GLType;
 };
 
-template<> const GLenum FormatDesc_GLType<float>::GLType = GL_FLOAT;
-template<> const GLenum FormatDesc_GLType<unsigned int>::GLType = GL_UNSIGNED_INT;
+template<int _nElems, typename _tElem>
+struct FormatDescType : FormatDescTypeGL<_tElem>
+{
+	typedef _tElem ElemType;
+	static const int nElems = _nElems;
+	static const DXGI_FORMAT DXGIFormat;
+};
 
-#endif
+template<> const DXGI_FORMAT FormatDescType<3, float>::DXGIFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+template<> const DXGI_FORMAT FormatDescType<1, unsigned int>::DXGIFormat = DXGI_FORMAT_R32_UINT;
+template<> const GLenum FormatDescTypeGL<float>::GLType = GL_FLOAT;
+template<> const GLenum FormatDescTypeGL<unsigned int>::GLType = GL_UNSIGNED_INT;
+
 
 enum FormatDescSemantic {
 	FDS_POSITION,
@@ -143,15 +123,16 @@ template<> const char* FormatDesc_SemanticName<FDS_POSITION>::Name = "POSITION";
 template<> const char* FormatDesc_SemanticName<FDS_COLOR>::Name = "COLOR";
 
 template<FormatDescSemantic Semantic, unsigned int SemanticIndex, int _nElems, typename _tElem, unsigned int InputSlot, unsigned int AlignedByteOffset, unsigned int InstanceDataStepRate, unsigned int _nOffset>
-struct FormatDesc/* : FormatDesc_FormatD3D<_nElems, _tElem>, FormatDescSemanticName<Semantic>*/
+struct FormatDesc : FormatDescType<_nElems, _tElem>
 {
-	static const int nElems = _nElems;
 	static const int nByteOffset = _nOffset;
 	static const int nByteSize = _nElems * sizeof(_tElem);
 	static const int nByteEndPos = nByteOffset + nByteSize;
-#ifdef USE_GX_D3D11
+
 	static const char* Name;
-	static const DXGI_FORMAT DXGIFormat = FormatDesc_FormatD3D<_nElems, _tElem>::DXGIFormat;
+	static void* GetOffsetPtr() { return (void*)nByteOffset; }
+
+	DX(
 	static const D3D11_INPUT_ELEMENT_DESC GetAsInputElementDesc()
 	{
 		D3D11_INPUT_ELEMENT_DESC elem;
@@ -164,19 +145,18 @@ struct FormatDesc/* : FormatDesc_FormatD3D<_nElems, _tElem>, FormatDescSemanticN
 		elem.InstanceDataStepRate = InstanceDataStepRate;
 		return elem;
 	}
-#endif
-#if defined (USE_GX_OPENGL)
-	static const GLenum GLType = FormatDesc_GLType<_tElem>::GLType;
-	static void* GetOffsetPtr() { return (void*)nByteOffset; }
-#endif
+	)
+
 };
 
-#ifdef USE_GX_D3D11
 template<FormatDescSemantic Semantic, unsigned int SemanticIndex, int _nElems, typename _tElem, unsigned int InputSlot, unsigned int AlignedByteOffset, unsigned int InstanceDataStepRate, unsigned int _nOffset>
 const char* FormatDesc<Semantic, SemanticIndex, _nElems, _tElem, InputSlot, AlignedByteOffset, InstanceDataStepRate, _nOffset>::Name = FormatDesc_SemanticName<Semantic>::Name;
-#endif
 
 
+
+//
+// Primitive Topology
+//
 enum PRIMITIVE_TOPOLOGY
 {
 	PT_TRIANGLE_LIST,
@@ -186,13 +166,15 @@ enum PRIMITIVE_TOPOLOGY
 template<PRIMITIVE_TOPOLOGY renderType>
 struct PrimitiveTopology
 {
-	static const D3D_PRIMITIVE_TOPOLOGY DXTopology = 0;
-	static const GLenum GLTopology = 0;
+	DX(static const D3D_PRIMITIVE_TOPOLOGY DXTopology;)
+	GL(static const GLenum GLTopology;)
 };
 
-template<>
-struct PrimitiveTopology<PT_TRIANGLE_LIST>
-{
-	static const D3D_PRIMITIVE_TOPOLOGY DXTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	static const GLenum GLTopology = GL_TRIANGLES;
-};
+DX(
+template<> const D3D_PRIMITIVE_TOPOLOGY PrimitiveTopology<PT_TRIANGLE_LIST>::DXTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+template<> const D3D_PRIMITIVE_TOPOLOGY PrimitiveTopology<PT_TRIANGLE_STRIP>::DXTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+)
+GL(
+template<> const GLenum PrimitiveTopology<PT_TRIANGLE_LIST>::GLTopology = GL_TRIANGLES;
+template<> const GLenum PrimitiveTopology<PT_TRIANGLE_STRIP>::GLTopology = GL_TRIANGLE_STRIP;
+)
