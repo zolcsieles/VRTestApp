@@ -4,6 +4,20 @@
 typedef IShader<GLuint, void> GLVertexShader;
 typedef IShader<GLuint, void> GLFragmentShader;
 
+class GLModel : public IModel
+{
+private:
+	GLuint mVertexArrayID;
+	Layout* mLayout;
+
+	friend class GLRenderer;
+
+public:
+	GLModel(Layout* layout, GLuint vertexArrayID) : mLayout(layout), mVertexArrayID(vertexArrayID)
+	{
+	}
+};
+
 class GLShaderProgram : public IShaderProgram<GLVertexShader, GLFragmentShader>
 {
 private:
@@ -25,6 +39,7 @@ public:
 class GLRenderer
 {
 private:
+	GLModel* actualModel;
 
 public:
 	void SetClearColor(float r, float g, float b, float a)
@@ -57,6 +72,35 @@ public:
 	void ActivateProgram(GLShaderProgram* sprog)
 	{
 		gl::glUseProgram(sprog->GetID());
+	}
+
+	void DeactivatePrograms()
+	{
+		gl::glUseProgram(0);
+	}
+
+	void BindModel(GLModel* model)
+	{
+		actualModel = model;
+		gl::glBindVertexArray(model->mVertexArrayID);
+	}
+
+	template<PRIMITIVE_TOPOLOGY pt>
+	void RenderIndexed(unsigned int nIndices)
+	{
+		gl::glDrawElements(PrimitiveTopology<pt>::GLTopology, nIndices, FormatDescType<unsigned int>::GLType, 0);
+	}
+
+	template<PRIMITIVE_TOPOLOGY pt>
+	void Render(unsigned int nVertices)
+	{
+		gl::glDrawElements(PrimitiveTopology<pt>::GLTopology, 0, nVertices);
+	}
+
+	void UnbindModels()
+	{
+		gl::glBindVertexArray(0);
+		actualModel = nullptr;
 	}
 
 	GLVertexShader* CreateVertexShaderFromSourceFile(const char* fName)
@@ -99,11 +143,34 @@ public:
 		return new GLFragmentShader(sh);
 	}
 
-	GLShaderProgram* CreateShaderProgram(GLVertexShader* vs, GLFragmentShader* ps)
+	GLShaderProgram* CreateShaderProgram(GLVertexShader* vs, GLFragmentShader* ps, Layout* layout)
 	{
-		return new GLShaderProgram(vs, ps);
+		GLShaderProgram* prog = new GLShaderProgram(vs, ps);
+		AttachLayoutToProgram(layout, prog);
+		return prog;
 	}
 
+	GLModel* CreateModel(Layout* layout)
+	{
+		GLuint vertexArrayID;
+		gl::glGenVertexArrays(1, &vertexArrayID);
+
+		GLModel* model = new GLModel(layout, vertexArrayID);
+		return model;
+	}
+
+private:
+	void AttachLayoutToProgram(Layout* layout, GLShaderProgram* prog)
+	{
+		for (int i = 0; i < layout->GetElemCount(); ++i)
+		{
+			FormatDescBase* fdb = layout->GetElem(i);
+			const char* paramName = fdb->GetParamName();
+			const GLuint ID = gl::glGetAttribLocation(prog->GetID(), paramName);
+			fdb->SetGLAttribID(ID);
+		}
+
+	}
 };
 
 /*

@@ -52,6 +52,9 @@ struct MyTypes<D3D>
 	typedef D3DVertexShader VertexShader;
 	typedef D3DPixelShader PixelShader;
 	typedef D3DShaderProgram ShaderProgram;
+	typedef D3DModel Model;
+	typedef ID3D11Buffer* VertexBuffer;
+	typedef ID3D11Buffer* IndexBuffer;
 };
 #endif
 
@@ -63,6 +66,9 @@ struct MyTypes<OGL>
 	typedef GLVertexShader VertexShader;
 	typedef GLFragmentShader PixelShader;
 	typedef GLShaderProgram ShaderProgram;
+	typedef GLModel Model;
+	typedef GLenum VertexBuffer;
+	typedef GLenum IndexBuffer;
 };
 #endif
 
@@ -70,9 +76,11 @@ bool runing = true;
 int dispWidth = 640;
 int dispHeight = 480;
 
-FormatDesc<FDS_POSITION, 0, 3, float, 0, 0, 0, 0> posDesc;
-FormatDesc<FDS_COLOR, 0, 3, float, 0, posDesc.nByteSize, 0, posDesc.nByteEndPos> colorDesc;
-FormatDesc<FDS_COLOR, 1, 3, float, 1, 0, 0, 0> color2Desc;
+FormatDesc<float> color2Descp(3, "color2", FDS_COLOR, 1, 1);
+FormatDesc<float> posDescp(3, "pos", FDS_POSITION, 0, 0);
+FormatDesc<float> colorDescp(3, "color", FDS_COLOR, 0, 0, posDescp.GetEndOffset());
+
+Layout myLayout;
 
 struct Vert {
 	zls::math::vec3 v_pos;
@@ -116,6 +124,9 @@ protected:
 	typedef typename MyTypes<xRenderer>::VertexShader MyVertexShader;
 	typedef typename MyTypes<xRenderer>::PixelShader MyPixelShader;
 	typedef typename MyTypes<xRenderer>::ShaderProgram MyShaderProgram;
+	typedef typename MyTypes<xRenderer>::Model MyModel;
+	typedef typename MyTypes<xRenderer>::VertexBuffer MyVertexBuffer;
+	typedef typename MyTypes<xRenderer>::IndexBuffer MyIndexBuffer;
 
 protected:
 	MyRenderer* ir;
@@ -123,12 +134,17 @@ protected:
 	MyVertexShader *vs;
 	MyPixelShader *fs;
 	MyShaderProgram *simple;
+	MyModel *quad;
 
+	MyVertexBuffer vertBuffer, indexBuffer;
+	MyIndexBuffer colorBuffer;
 public:
 	virtual void Init(Window* wnd) = 0;
-	virtual void InitShaders() = 0;
-	virtual void InitGeometry() = 0;
+	//virtual void InitGeometry() = 0;
 	virtual void Render() = 0;
+
+	virtual MyVertexBuffer CreateVertexBuffer(int sizeOfVertices, const void* vertData, const unsigned int slot, Layout* layout) = 0;
+	virtual MyIndexBuffer CreateIndexBuffer(int sizeOfIndices, const void* indexData) = 0;
 
 	SDLAppWindow()
 	{
@@ -149,22 +165,32 @@ public:
 
 		ir->SwapBuffers();
 	}
-	void InitShadersWithoutLayout()
+	void InitShaders()
 	{
 		vs = ir->CreateVertexShaderFromSourceFile("Data/Shaders/simple.vs");
 		fs = ir->CreatePixelShaderFromSourceFile("Data/Shaders/simple.fs");
-		simple = ir->CreateShaderProgram(vs, fs);
+		simple = ir->CreateShaderProgram(vs, fs, &myLayout);
+	}
+
+	void InitGeometry()
+	{
+		quad = ir->CreateModel(&myLayout);
+		ir->BindModel(quad);
+		//VERTEX
+		vertBuffer = CreateVertexBuffer(SizeOfVertices, v_buffer, 0, &myLayout);
+
+		//INDEX
+		indexBuffer = CreateIndexBuffer(SizeOfIndices, i_buffer);
+
+		//COLOR
+		colorBuffer = CreateVertexBuffer(SizeOfColors, v_col2, 1, &myLayout);
+		ir->UnbindModels();
 	}
 };
 
 #if defined(USE_GX_OPENGL)
 class GLAPP : public SDLAppWindow<OGL>
 {
-private:
-	GLuint vertArrayObj;
-	GLuint vertBuffer, indexBuffer;
-	GLuint colorBuffer;
-
 public:
 	void Init(Window* wnd)
 	{
@@ -187,16 +213,54 @@ public:
 		gl::glEnable(GL_CULL_FACE);
 	}
 
-	void InitShaders()
+	GLuint CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
 	{
-		InitShadersWithoutLayout();
+		GLuint bufferID;
+		gl::glGenBuffers(1, &bufferID);
+		gl::glBindBuffer(bindFlags, bufferID);
+		gl::glBufferData(bindFlags, sizeOfBuffer, data, GL_STATIC_DRAW);
+		return bufferID;
 	}
 
-	GLuint CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data);
-	GLuint CreateVertexBuffer(int sizeOfVertices, const void* vertData);
-	GLuint CreateIndexBuffer(int sizeOfIndices, const void* indexData);
+	GLuint CreateVertexBuffer(int sizeOfVertices, const void* vertData, const unsigned int slot, Layout* layout)
+	{
+		GLuint vb = CreateAndUploadBuffer(sizeOfVertices, GL_ARRAY_BUFFER, vertData);
 
-	void InitGeometry();
+		unsigned int countInSlot = layout->GetElemsInSlot(slot);
+		unsigned int slotSize = layout->GetSlotSize(slot);
+
+		int firstElem = 0;
+		for (int i = 0; i < layout->GetElemCount(); ++i)
+		{
+			FormatDescBase* fdb = layout->GetElem(i);
+			if (fdb->GetInputSlot() < slot)
+				continue;
+			if (fdb->GetInputSlot() > slot)
+				break;
+			if (fdb->GetInputSlot() == slot)
+			{
+				firstElem = i;
+				break;
+			}
+		}
+
+		for (unsigned int i = firstElem; i < firstElem + countInSlot; ++i)
+		{
+			FormatDescBase* fdb = layout->GetElem(i);
+			const GLuint id = fdb->GetGLAttribID();
+			gl::glEnableVertexAttribArray(id);
+			gl::glVertexAttribPointer(id, fdb->GetElemCount(), fdb->GetGLType(), GL_FALSE, slotSize, fdb->GetOffsetPtr());
+		}
+
+		return vb;
+	}
+
+	GLuint CreateIndexBuffer(int sizeOfIndices, const void* indexData)
+	{
+		return CreateAndUploadBuffer(sizeOfIndices, GL_ELEMENT_ARRAY_BUFFER, indexData);
+	}
+
+	//void InitGeometry();
 	void Render();
 } glAppWindow;
 #endif
@@ -205,8 +269,6 @@ public:
 class DXAPP : public SDLAppWindow<D3D>
 {
 protected:
-	ID3D11Buffer *vertBuffer, *indexBuffer;
-	ID3D11Buffer *colorBuffer;
 
 	ID3D11Buffer* CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
 	{
@@ -274,23 +336,7 @@ public:
 		ir->GetDeviceContextPtr()->OMSetRenderTargets(1, d3dAppWindow.GetIR()->GetRenderTargetViewPtrPtr(), NULL);
 	}
 
-	void InitShaders()
-	{
-		InitShadersWithoutLayout();
-
-		ID3D11InputLayout *ilay;
-
-		D3D11_INPUT_ELEMENT_DESC ied[] =
-		{
-			posDesc.GetAsInputElementDesc(),
-			colorDesc.GetAsInputElementDesc(),
-			color2Desc.GetAsInputElementDesc(),
-		};
-		ir->GetDevicePtr()->CreateInputLayout(ied, sizeof(ied) / sizeof(*ied), vs->GetBlob()->GetBufferPointer(), vs->GetBlob()->GetBufferSize(), &ilay);
-		ir->GetDeviceContextPtr()->IASetInputLayout(ilay);
-	}
-
-	ID3D11Buffer* CreateVertexBuffer(int sizeOfVertices, const void* vertData)
+	ID3D11Buffer* CreateVertexBuffer(int sizeOfVertices, const void* vertData, const unsigned int /*slot*/, Layout* /*layout*/)
 	{
 		return CreateAndUploadBuffer(sizeOfVertices, D3D11_BIND_VERTEX_BUFFER, vertData);
 	}
@@ -300,7 +346,7 @@ public:
 		return CreateAndUploadBuffer(SizeOfIndices, D3D11_BIND_INDEX_BUFFER, indexData);
 	}
 
-	void InitGeometry();
+	//void InitGeometry();
 	void Render();
 	
 } d3dAppWindow;
@@ -314,85 +360,28 @@ public:
 /*******************************************************************************************************************/
 void GLAPP::Render()
 {
-	gl::glBindVertexArray(vertArrayObj);
-	gl::glDrawElements(PrimitiveTopology<PT_TRIANGLE_LIST>::GLTopology, nIndices, FormatDescType<0,unsigned int>::GLType, 0);
-	gl::glBindVertexArray(0);
+	ir->BindModel(quad);
+	ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
 
-	gl::glUseProgram(0);
+	ir->UnbindModels();
+	ir->DeactivatePrograms();
+
 }
 
 void DXAPP::Render()
 {
+	ir->BindModel(quad);
+	ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+
 	UINT stride = sizeof(zls::math::vec3) * 2;
 	UINT strideCol = sizeof(zls::math::vec3);
 	UINT offset = 0;
-	ir->GetDeviceContextPtr()->IASetIndexBuffer(indexBuffer, FormatDescType<1, unsigned int>::DXGIFormat, 0);
+	ir->GetDeviceContextPtr()->IASetIndexBuffer(indexBuffer, FormatDescType<unsigned int>::DXGIFormats[0], 0);
 	ir->GetDeviceContextPtr()->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
 	ir->GetDeviceContextPtr()->IASetVertexBuffers(1, 1, &colorBuffer, &strideCol, &offset);
 
-	ir->GetDeviceContextPtr()->IASetPrimitiveTopology(PrimitiveTopology<PT_TRIANGLE_LIST>::DXTopology);
-	ir->GetDeviceContextPtr()->DrawIndexed(nIndices, 0, 0); 	//ir->GetDeviceContextPtr()->Draw(3, 0);
-}
-/*******************************************************************************************************************/
-GLuint GLAPP::CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
-{
-	GLuint bufferID;
-	gl::glGenBuffers(1, &bufferID);
-	gl::glBindBuffer(bindFlags, bufferID);
-	gl::glBufferData(bindFlags, sizeOfBuffer, data, GL_STATIC_DRAW);
-	return bufferID;
-}
-
-GLuint GLAPP::CreateVertexBuffer(int sizeOfVertices, const void* vertData)
-{
-	return CreateAndUploadBuffer(sizeOfVertices, GL_ARRAY_BUFFER, vertData);
-}
-
-GLuint GLAPP::CreateIndexBuffer(int sizeOfIndices, const void* indexData)
-{
-	return CreateAndUploadBuffer(sizeOfIndices, GL_ELEMENT_ARRAY_BUFFER, indexData);
-}
-
-
-void GLAPP::InitGeometry()
-{
-	gl::glGenVertexArrays(1, &vertArrayObj);
-	gl::glBindVertexArray(vertArrayObj); //VertexArrayObject
-
-	vertBuffer = CreateVertexBuffer(SizeOfVertices, v_buffer);
-
-	indexBuffer = CreateIndexBuffer(SizeOfIndices, i_buffer);
-
-	const GLuint v_pos_id = gl::glGetAttribLocation(simple->GetID(), "v_pos");
-	gl::glEnableVertexAttribArray(v_pos_id); //Matches layout (location = 0)
-	gl::glVertexAttribPointer(v_pos_id, posDesc.nElems, posDesc.GLType, GL_FALSE, sizeof(Vert), 0);
-
-	const GLuint v_col_id = gl::glGetAttribLocation(simple->GetID(), "v_col");
-	gl::glEnableVertexAttribArray(v_col_id); //Matches layout (location = 1)
-	gl::glVertexAttribPointer(v_col_id, colorDesc.nElems, colorDesc.GLType, GL_FALSE, sizeof(Vert), colorDesc.GetOffsetPtr());
-
-	//COLOR Buffer
-	colorBuffer = CreateVertexBuffer(SizeOfColors, v_col2);
-
-	const GLuint v_col2_id = gl::glGetAttribLocation(simple->GetID(), "v_col2");
-	gl::glEnableVertexAttribArray(v_col2_id); //Matches layout (location = 2)
-	gl::glVertexAttribPointer(v_col2_id, colorDesc.nElems, colorDesc.GLType, GL_FALSE, sizeof(zls::math::vec3), 0);
-
-
-
-	gl::glBindVertexArray(0); //VertexArrayObject
-}
-
-void DXAPP::InitGeometry()
-{
-	//VERTEX
-	vertBuffer = CreateVertexBuffer(SizeOfVertices, v_buffer);
-
-	//INDEX
-	indexBuffer = CreateIndexBuffer(SizeOfIndices, i_buffer);
-
-	//COLOR
-	colorBuffer = CreateVertexBuffer(SizeOfColors, v_col2);
+	ir->UnbindModels();
+	ir->DeactivatePrograms();
 }
 /*******************************************************************************************************************/
 
@@ -491,8 +480,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	gxdrv.push_back(GX_D3D);
 #endif
 
-	const int fullWidth = 1366;
-	int dw = dispWidth + 10;
+	const int fullWidth = 1440;
+	const int padding = 50;
+	int dw = dispWidth + padding;
 	int x = (fullWidth>>1)-(gxdrv.size()&1)*(dispWidth>>1)-(dw*(gxdrv.size()));
 
 	for (std::vector<GxDriver>::iterator it = gxdrv.begin(); it != gxdrv.end(); ++it)
@@ -512,6 +502,10 @@ int _tmain(int argc, _TCHAR* argv[])
 			ErrorExit("Unable to initialize GX system!\n");
 		}
 	}
+	myLayout.AddElement(&color2Descp);
+	myLayout.AddElement(&posDescp);
+	myLayout.AddElement(&colorDescp);
+	myLayout.Update();
 
 	InitGraphics();
 	InitShaders();

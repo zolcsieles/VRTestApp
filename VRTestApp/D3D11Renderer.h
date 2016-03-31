@@ -5,10 +5,21 @@ typedef IShader<ID3D11VertexShader*, ID3DBlob> D3DVertexShader;
 typedef IShader<ID3D11PixelShader*, ID3DBlob> D3DPixelShader;
 typedef IShaderProgram<D3DVertexShader, D3DPixelShader> D3DShaderProgram;
 
+class D3DModel : IModel
+{
+private:
+	Layout* mLayout;
+public:
+	D3DModel(Layout* layout) : mLayout(layout)
+	{
+	}
+};
+
 class D3DRenderer
 {
 private:
 	float mClearColor[4];
+	D3DModel* actualModel;
 
 protected:
 	IDXGISwapChain* swapchain; //SwapChain
@@ -55,6 +66,35 @@ public:
 	{
 		devcon->VSSetShader(*sprog->GetVS(), nullptr, 0);
 		devcon->PSSetShader(*sprog->GetPS(), nullptr, 0);
+	}
+
+	void DeactivatePrograms()
+	{
+
+	}
+
+	void BindModel(D3DModel* model)
+	{
+		actualModel = model;
+	}
+
+	template<PRIMITIVE_TOPOLOGY pt>
+	void RenderIndexed(unsigned int nIndices)
+	{
+		devcon->IASetPrimitiveTopology(PrimitiveTopology<PT_TRIANGLE_LIST>::DXTopology);
+		devcon->DrawIndexed(nIndices, 0, 0); 	//ir->GetDeviceContextPtr()->Draw(3, 0);
+	}
+
+	template<PRIMITIVE_TOPOLOGY pt>
+	void Render(unsigned int nVertex)
+	{
+		devcon->IASetPrimitiveTopology(PrimitiveTopology<PT_TRIANGLE_LIST>::DXTopology);
+		devcon->Draw(nVertex, 0);
+	}
+
+	void UnbindModels()
+	{
+		actualModel = nullptr;
 	}
 
 	D3DVertexShader* CreateVertexShaderFromSourceFile(const char* fName)
@@ -116,12 +156,40 @@ public:
 		return ptr;
 	}
 
-	D3DShaderProgram* CreateShaderProgram(D3DVertexShader* vs, D3DPixelShader* ps)
+	D3DShaderProgram* CreateShaderProgram(D3DVertexShader* vs, D3DPixelShader* ps, Layout* layout)
 	{
-		return new D3DShaderProgram(vs, ps);
+		D3DShaderProgram* prog = new D3DShaderProgram(vs, ps);
+		AttachLayoutToProgram(layout, prog);
+		return prog;
+	}
+
+	D3DModel* CreateModel(Layout* layout)
+	{
+		D3DModel* model = new D3DModel(layout);
+		return model;
 	}
 
 	//for D3DRenderer
+private:
+	friend class DXAPP;
+
+	void AttachLayoutToProgram(Layout* layout, D3DShaderProgram* prog)
+	{
+		AttachLayoutToVertexShader(layout, prog->GetVS());
+	}
+
+	void AttachLayoutToVertexShader(Layout* layout, D3DVertexShader* vs)
+	{
+		const int elemCount = layout->GetElemCount();
+		ID3D11InputLayout* ilay;
+		D3D11_INPUT_ELEMENT_DESC* inputElemDesc = new D3D11_INPUT_ELEMENT_DESC[elemCount];
+		for (int i = 0; i < elemCount; ++i)
+			layout->GetElem(i)->SetInputElementDesc(&inputElemDesc[i]);
+		GetDevicePtr()->CreateInputLayout(inputElemDesc, elemCount, vs->GetBlob()->GetBufferPointer(), vs->GetBlob()->GetBufferSize(), &ilay);
+		GetDeviceContextPtr()->IASetInputLayout(ilay);
+		delete inputElemDesc;
+	}
+
 	IDXGISwapChain* GetSwapChainPtr() { return swapchain; }
 	IDXGISwapChain** GetSwapChainPtrPtr() { return &swapchain; }
 
