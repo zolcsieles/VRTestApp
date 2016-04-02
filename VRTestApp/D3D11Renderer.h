@@ -5,12 +5,21 @@ typedef IShader<ID3D11VertexShader*, ID3DBlob> D3DVertexShader;
 typedef IShader<ID3D11PixelShader*, ID3DBlob> D3DPixelShader;
 typedef IShaderProgram<D3DVertexShader, D3DPixelShader> D3DShaderProgram;
 
-class D3DModel : IModel
+struct D3DBuffer
+{
+	ID3D11Buffer* buffer;
+
+	D3DBuffer() : buffer(nullptr)
+	{}
+};
+
+class D3DModel : IModel<D3DBuffer>
 {
 private:
-	Layout* mLayout;
+	friend class D3DRenderer;
+	//std::vector<unsigned int> slotSize;
 public:
-	D3DModel(Layout* layout) : mLayout(layout)
+	D3DModel(Layout* layout) : IModel(layout)
 	{
 	}
 };
@@ -78,16 +87,70 @@ public:
 		actualModel = model;
 	}
 
+	ID3D11Buffer* _CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
+	{
+		ID3D11Buffer* temp;
+
+		D3D11_BUFFER_DESC bufferDesc;
+		bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+		bufferDesc.ByteWidth = sizeOfBuffer;
+		bufferDesc.BindFlags = bindFlags;
+		bufferDesc.CPUAccessFlags = 0;
+		bufferDesc.MiscFlags = 0;
+
+		D3D11_SUBRESOURCE_DATA bufferData;
+		bufferData.pSysMem = data;
+		bufferData.SysMemPitch = 0;
+		bufferData.SysMemSlicePitch = 0;
+
+		//Create and upload
+		HRESULT hr;
+		hr = dev->CreateBuffer(&bufferDesc, &bufferData, &temp);
+
+		return temp;
+	}
+
+	D3DBuffer* CreateVertexBuffer(unsigned int slot, int nVertices, const void* vertData)
+	{
+		const int sizeOfBuffer = actualModel->mLayout->GetSlotSize(slot) * nVertices;
+		actualModel->mSlots[slot].buffer = _CreateAndUploadBuffer(sizeOfBuffer, D3D11_BIND_VERTEX_BUFFER, vertData);
+		return &actualModel->mSlots[slot];
+	}
+
+	D3DBuffer* CreateIndexBuffer(int nIndices, const void* indexData)
+	{
+		const int sizeOfBuffer = sizeof(unsigned int) * nIndices;
+		actualModel->mIndex.buffer = _CreateAndUploadBuffer(sizeOfBuffer, D3D11_BIND_INDEX_BUFFER, indexData);
+		return &actualModel->mIndex;
+	}
+
+	void _SetBuffers()
+	{
+		if (actualModel->mIndex.buffer != nullptr)
+			devcon->IASetIndexBuffer(actualModel->mIndex.buffer, FormatDescType<unsigned int>::DXGIFormats[0], 0);
+
+		UINT offset = 0;
+		for (unsigned int i = 0; i < actualModel->mLayout->GetSlotCount(); ++i)
+		{
+			UINT stride = actualModel->mLayout->GetSlotSize(i);
+			devcon->IASetVertexBuffers(i, 1, &(actualModel->mSlots[i].buffer), &stride, &offset);
+		}
+	}
+
 	template<PRIMITIVE_TOPOLOGY pt>
 	void RenderIndexed(unsigned int nIndices)
 	{
+		_SetBuffers();
+
 		devcon->IASetPrimitiveTopology(PrimitiveTopology<PT_TRIANGLE_LIST>::DXTopology);
-		devcon->DrawIndexed(nIndices, 0, 0); 	//ir->GetDeviceContextPtr()->Draw(3, 0);
+		devcon->DrawIndexed(nIndices, 0, 0);
 	}
 
 	template<PRIMITIVE_TOPOLOGY pt>
 	void Render(unsigned int nVertex)
 	{
+		_SetBuffers();
+
 		devcon->IASetPrimitiveTopology(PrimitiveTopology<PT_TRIANGLE_LIST>::DXTopology);
 		devcon->Draw(nVertex, 0);
 	}

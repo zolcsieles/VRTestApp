@@ -53,8 +53,8 @@ struct MyTypes<D3D>
 	typedef D3DPixelShader PixelShader;
 	typedef D3DShaderProgram ShaderProgram;
 	typedef D3DModel Model;
-	typedef ID3D11Buffer* VertexBuffer;
-	typedef ID3D11Buffer* IndexBuffer;
+	typedef D3DBuffer* VertexBuffer;
+	typedef D3DBuffer* IndexBuffer;
 };
 #endif
 
@@ -67,8 +67,8 @@ struct MyTypes<OGL>
 	typedef GLFragmentShader PixelShader;
 	typedef GLShaderProgram ShaderProgram;
 	typedef GLModel Model;
-	typedef GLenum VertexBuffer;
-	typedef GLenum IndexBuffer;
+	typedef GLBuffer* VertexBuffer;
+	typedef GLBuffer* IndexBuffer;
 };
 #endif
 
@@ -136,15 +136,10 @@ protected:
 	MyShaderProgram *simple;
 	MyModel *quad;
 
-	MyVertexBuffer vertBuffer, indexBuffer;
-	MyIndexBuffer colorBuffer;
+	MyVertexBuffer vertBuffer, colorBuffer;
+	MyIndexBuffer indexBuffer;
 public:
 	virtual void Init(Window* wnd) = 0;
-	//virtual void InitGeometry() = 0;
-	virtual void Render() = 0;
-
-	virtual MyVertexBuffer CreateVertexBuffer(int sizeOfVertices, const void* vertData, const unsigned int slot, Layout* layout) = 0;
-	virtual MyIndexBuffer CreateIndexBuffer(int sizeOfIndices, const void* indexData) = 0;
 
 	SDLAppWindow()
 	{
@@ -165,6 +160,7 @@ public:
 
 		ir->SwapBuffers();
 	}
+
 	void InitShaders()
 	{
 		vs = ir->CreateVertexShaderFromSourceFile("Data/Shaders/simple.vs");
@@ -177,14 +173,23 @@ public:
 		quad = ir->CreateModel(&myLayout);
 		ir->BindModel(quad);
 		//VERTEX
-		vertBuffer = CreateVertexBuffer(SizeOfVertices, v_buffer, 0, &myLayout);
+		vertBuffer = ir->CreateVertexBuffer(0, nVertices, v_buffer);
 
 		//INDEX
-		indexBuffer = CreateIndexBuffer(SizeOfIndices, i_buffer);
+		indexBuffer = ir->CreateIndexBuffer(nIndices, i_buffer);
 
 		//COLOR
-		colorBuffer = CreateVertexBuffer(SizeOfColors, v_col2, 1, &myLayout);
+		colorBuffer = ir->CreateVertexBuffer(1, nVertices, v_col2);
 		ir->UnbindModels();
+	}
+
+	void Render()
+	{
+		ir->BindModel(quad);
+		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+
+		ir->UnbindModels();
+		ir->DeactivatePrograms();
 	}
 };
 
@@ -212,87 +217,12 @@ public:
 		gl::glCullFace(GL_BACK);
 		gl::glEnable(GL_CULL_FACE);
 	}
-
-	GLuint CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
-	{
-		GLuint bufferID;
-		gl::glGenBuffers(1, &bufferID);
-		gl::glBindBuffer(bindFlags, bufferID);
-		gl::glBufferData(bindFlags, sizeOfBuffer, data, GL_STATIC_DRAW);
-		return bufferID;
-	}
-
-	GLuint CreateVertexBuffer(int sizeOfVertices, const void* vertData, const unsigned int slot, Layout* layout)
-	{
-		GLuint vb = CreateAndUploadBuffer(sizeOfVertices, GL_ARRAY_BUFFER, vertData);
-
-		unsigned int countInSlot = layout->GetElemsInSlot(slot);
-		unsigned int slotSize = layout->GetSlotSize(slot);
-
-		int firstElem = 0;
-		for (int i = 0; i < layout->GetElemCount(); ++i)
-		{
-			FormatDescBase* fdb = layout->GetElem(i);
-			if (fdb->GetInputSlot() < slot)
-				continue;
-			if (fdb->GetInputSlot() > slot)
-				break;
-			if (fdb->GetInputSlot() == slot)
-			{
-				firstElem = i;
-				break;
-			}
-		}
-
-		for (unsigned int i = firstElem; i < firstElem + countInSlot; ++i)
-		{
-			FormatDescBase* fdb = layout->GetElem(i);
-			const GLuint id = fdb->GetGLAttribID();
-			gl::glEnableVertexAttribArray(id);
-			gl::glVertexAttribPointer(id, fdb->GetElemCount(), fdb->GetGLType(), GL_FALSE, slotSize, fdb->GetOffsetPtr());
-		}
-
-		return vb;
-	}
-
-	GLuint CreateIndexBuffer(int sizeOfIndices, const void* indexData)
-	{
-		return CreateAndUploadBuffer(sizeOfIndices, GL_ELEMENT_ARRAY_BUFFER, indexData);
-	}
-
-	//void InitGeometry();
-	void Render();
 } glAppWindow;
 #endif
 #if defined(USE_GX_D3D11)
 
 class DXAPP : public SDLAppWindow<D3D>
 {
-protected:
-
-	ID3D11Buffer* CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
-	{
-		ID3D11Buffer* temp;
-
-		D3D11_BUFFER_DESC bufferDesc;
-		bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		bufferDesc.ByteWidth = sizeOfBuffer;
-		bufferDesc.BindFlags = bindFlags;
-		bufferDesc.CPUAccessFlags = 0;
-		bufferDesc.MiscFlags = 0;
-
-		D3D11_SUBRESOURCE_DATA bufferData;
-		bufferData.pSysMem = data;
-		bufferData.SysMemPitch = 0;
-		bufferData.SysMemSlicePitch = 0;
-
-		//Create and upload
-		HRESULT hr;
-		hr = ir->GetDevicePtr()->CreateBuffer(&bufferDesc, &bufferData, &temp);
-
-		return temp;
-	}
-
 public:
 	void Init(Window* wnd)
 	{
@@ -335,55 +265,8 @@ public:
 		//Bind the view
 		ir->GetDeviceContextPtr()->OMSetRenderTargets(1, d3dAppWindow.GetIR()->GetRenderTargetViewPtrPtr(), NULL);
 	}
-
-	ID3D11Buffer* CreateVertexBuffer(int sizeOfVertices, const void* vertData, const unsigned int /*slot*/, Layout* /*layout*/)
-	{
-		return CreateAndUploadBuffer(sizeOfVertices, D3D11_BIND_VERTEX_BUFFER, vertData);
-	}
-
-	ID3D11Buffer* CreateIndexBuffer(int sizeOfIndices, const void* indexData)
-	{
-		return CreateAndUploadBuffer(SizeOfIndices, D3D11_BIND_INDEX_BUFFER, indexData);
-	}
-
-	//void InitGeometry();
-	void Render();
-	
 } d3dAppWindow;
 #endif
-
-
-//------------------------------------
-
-//------------------------------------
-
-/*******************************************************************************************************************/
-void GLAPP::Render()
-{
-	ir->BindModel(quad);
-	ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
-
-	ir->UnbindModels();
-	ir->DeactivatePrograms();
-
-}
-
-void DXAPP::Render()
-{
-	ir->BindModel(quad);
-	ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
-
-	UINT stride = sizeof(zls::math::vec3) * 2;
-	UINT strideCol = sizeof(zls::math::vec3);
-	UINT offset = 0;
-	ir->GetDeviceContextPtr()->IASetIndexBuffer(indexBuffer, FormatDescType<unsigned int>::DXGIFormats[0], 0);
-	ir->GetDeviceContextPtr()->IASetVertexBuffers(0, 1, &vertBuffer, &stride, &offset);
-	ir->GetDeviceContextPtr()->IASetVertexBuffers(1, 1, &colorBuffer, &strideCol, &offset);
-
-	ir->UnbindModels();
-	ir->DeactivatePrograms();
-}
-/*******************************************************************************************************************/
 
 void MyExit()
 {

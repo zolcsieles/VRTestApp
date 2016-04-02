@@ -228,32 +228,52 @@ public:
 
 };
 
+struct SlotInfo
+{
+	unsigned int elemCount;
+	unsigned int byteSize;
+	unsigned int firstElemIdx;
+
+	SlotInfo() : elemCount(0), byteSize(0), firstElemIdx(0)
+	{}
+};
+
 class Layout
 {
 private:
 	std::vector<FormatDescBase*> layout;
-	bool sorted;
-
+	std::vector<SlotInfo> slotInfo;
+	unsigned int lastSlot;
 	static bool FormatDescComp(const FormatDescBase* a, const FormatDescBase* b)
 	{
 		return (*a) < (*b);
 	}
 
 public:
-	Layout() : sorted(true)
+	Layout() : lastSlot(0)
 	{
 	}
 
 	void AddElement(FormatDescBase* formatDesc)
 	{
-		sorted = false;
 		layout.push_back(formatDesc);
+		lastSlot = max(lastSlot, formatDesc->GetInputSlot());
 	}
 
 	void Update()
 	{
 		std::stable_sort(layout.begin(), layout.end(), FormatDescComp);
-		sorted = true;
+		slotInfo.resize(lastSlot+1);
+
+		for (unsigned int i = 0; i < layout.size(); ++i)
+		{
+			FormatDescBase* ptr = layout[i];
+			SlotInfo& ref = slotInfo[ptr->GetInputSlot()];
+			if (ref.elemCount == 0)
+				ref.firstElemIdx = i;
+			ref.byteSize += ptr->GetElemSize() * ptr->GetElemCount();
+			++ref.elemCount;
+		}
 	}
 
 	int GetElemCount()
@@ -266,40 +286,46 @@ public:
 		return layout[i];
 	}
 
+	FormatDescBase* GetSlotElem(unsigned int slot, unsigned int i)
+	{
+		slotInfo[slot].elemCount > i ? void() : __debugbreak();
+		layout[slotInfo[slot].firstElemIdx + i]->GetInputSlot() == slot ? void() : __debugbreak();
+		return layout[slotInfo[slot].firstElemIdx + i];
+	}
+
 	unsigned int GetElemsInSlot(unsigned int slot)
 	{
-		unsigned int count = 0;
-		for (std::vector<FormatDescBase*>::iterator it = layout.begin(); it != layout.end(); ++it)
-		{
-			unsigned int actualSlot = (*it)->GetInputSlot();
-			if (actualSlot < slot)
-				continue;
-			if (actualSlot > slot)
-				break;
-			++count;
-		}
-		return count;
+		return slotInfo[slot].elemCount;
 	}
 
 	unsigned int GetSlotSize(unsigned int slot)
 	{
-		unsigned int size = 0;
-		for (std::vector<FormatDescBase*>::iterator it = layout.begin(); it != layout.end(); ++it)
-		{
-			unsigned int actualSlot = (*it)->GetInputSlot();
-			if (actualSlot < slot)
-				continue;
-			if (actualSlot > slot)
-				break;
-			size+=(*it)->GetElemSize() * (*it)->GetElemCount();
-		}
-		return size;
+		return slotInfo[slot].byteSize;
+	}
+
+	unsigned int GetFirstElemIdx(unsigned int slot)
+	{
+		return slotInfo[slot].firstElemIdx;
+	}
+
+	unsigned int GetSlotCount()
+	{
+		return slotInfo.size();
 	}
 };
 
+template<typename BufferType>
 class IModel
 {
-
+protected:
+	Layout* mLayout;
+	BufferType mIndex;
+	std::vector<BufferType> mSlots;
+public:
+	IModel(Layout* layout) : mLayout(layout)
+	{
+		mSlots.resize(mLayout->GetSlotCount());
+	}
 };
 
 //

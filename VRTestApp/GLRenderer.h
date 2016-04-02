@@ -4,16 +4,21 @@
 typedef IShader<GLuint, void> GLVertexShader;
 typedef IShader<GLuint, void> GLFragmentShader;
 
-class GLModel : public IModel
+struct GLBuffer
 {
+	GLuint bufferId;
+
+	GLBuffer() : bufferId(0)
+	{}
+};
+
+class GLModel : public IModel<GLBuffer>
+{
+	friend class GLRenderer;
 private:
 	GLuint mVertexArrayID;
-	Layout* mLayout;
-
-	friend class GLRenderer;
-
 public:
-	GLModel(Layout* layout, GLuint vertexArrayID) : mLayout(layout), mVertexArrayID(vertexArrayID)
+	GLModel(Layout* layout, GLuint vertexArrayID) : IModel(layout), mVertexArrayID(vertexArrayID)
 	{
 	}
 };
@@ -83,6 +88,42 @@ public:
 	{
 		actualModel = model;
 		gl::glBindVertexArray(model->mVertexArrayID);
+	}
+
+	GLuint _CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
+	{
+		GLuint bufferId;
+		gl::glGenBuffers(1, &bufferId);
+		gl::glBindBuffer(bindFlags, bufferId);
+		gl::glBufferData(bindFlags, sizeOfBuffer, data, GL_STATIC_DRAW);
+		return bufferId;
+	}
+
+	GLBuffer* CreateVertexBuffer(unsigned int slot, int nVertices, const void* vertData)
+	{
+		Layout* layout = actualModel->mLayout;
+		unsigned int countInSlot = layout->GetElemsInSlot(slot);
+		unsigned int slotSize = layout->GetSlotSize(slot);
+		unsigned int sizeOfBuffer = nVertices*slotSize;
+
+		actualModel->mSlots[slot].bufferId = _CreateAndUploadBuffer(sizeOfBuffer, GL_ARRAY_BUFFER, vertData);
+
+		for (unsigned int i = 0; i < countInSlot; ++i)
+		{
+			FormatDescBase* fdb = layout->GetSlotElem(slot, i);
+			const GLuint id = fdb->GetGLAttribID();
+			gl::glEnableVertexAttribArray(id);
+			gl::glVertexAttribPointer(id, fdb->GetElemCount(), fdb->GetGLType(), GL_FALSE, slotSize, fdb->GetOffsetPtr());
+		}
+
+		return &actualModel->mSlots[slot];
+	}
+
+	GLBuffer* CreateIndexBuffer(int nIndices, const void* indexData)
+	{
+		unsigned int sizeOfBuffer = nIndices * sizeof(unsigned int);
+		actualModel->mIndex.bufferId = _CreateAndUploadBuffer(sizeOfBuffer, GL_ELEMENT_ARRAY_BUFFER, indexData);
+		return &actualModel->mIndex;
 	}
 
 	template<PRIMITIVE_TOPOLOGY pt>
