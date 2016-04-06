@@ -231,17 +231,6 @@ protected:
 
 public:
 	virtual void Init(Window* wnd) = 0;
-	void SetUniforms(float x, float y, float z)
-	{
-		xconstantBuffer.shift.x = x;
-		xconstantBuffer.shift.y = y;
-		xconstantBuffer.shift.z = z;
-
-		xconstantBuffer.proj.SetSymetricFrustum(1.0f, 10.0f, 1.0f, 1.0f);
-
-		ir->UpdateConstantBuffer(constantBuffer, &xconstantBuffer);
-		ir->ActualizeConstantBuffer(constantBuffer, simple, "BlockName");
-	}
 
 	SDLAppWindow()
 	{
@@ -292,16 +281,6 @@ public:
 		ir->UnbindModels();
 	}
 
-	void LoadTexture()
-	{
-
-	}
-
-	void InitTexture()
-	{
-
-	}
-
 	void Render()
 	{
 		float y = (GetTickCount() % 10000) / 10000.0f;
@@ -313,6 +292,19 @@ public:
 		ir->UnbindModels();
 		ir->DeactivatePrograms();
 	}
+
+	void SetUniforms(float x, float y, float z)
+	{
+		xconstantBuffer.shift.x = x;
+		xconstantBuffer.shift.y = y;
+		xconstantBuffer.shift.z = z;
+
+		xconstantBuffer.proj.SetSymetricFrustum(1.0f, 10.0f, 1.0f, 1.0f);
+
+		ir->UpdateConstantBuffer(constantBuffer, &xconstantBuffer);
+		ir->ActualizeConstantBuffer(constantBuffer, simple, "BlockName");
+	}
+
 };
 
 #if defined(USE_GX_OPENGL)
