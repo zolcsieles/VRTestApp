@@ -206,8 +206,8 @@ public:
 		MultiByteToWideChar(CP_ACP, 0, fName, -1, fname, fname_len); // == fname_len
 		std::wstring fileName = std::wstring(fname) + std::wstring(L".hlsl");
 		delete[] fname;
-
-		D3DCompileFromFile(fileName.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_4_0_level_9_1", D3DCOMPILE_ENABLE_STRICTNESS, 0, &blob, &errorBlob);
+		//vs_4_0_level_9_1
+		D3DCompileFromFile(fileName.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", D3DCOMPILE_ENABLE_STRICTNESS, 0, &blob, &errorBlob);
 
 		if (errorBlob == nullptr)
 		{
@@ -236,8 +236,8 @@ public:
 		MultiByteToWideChar(CP_ACP, 0, fName, -1, fname, fname_len); // == fname_len
 		std::wstring fileName = std::wstring(fname) + std::wstring(L".hlsl");
 		delete[] fname;
-
-		D3DCompileFromFile(fileName.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_4_0_level_9_1", D3DCOMPILE_ENABLE_STRICTNESS, 0, &blob, &errorBlob);
+		//ps_4_0_level_9_1
+		D3DCompileFromFile(fileName.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", D3DCOMPILE_ENABLE_STRICTNESS, 0, &blob, &errorBlob);
 
 		if (errorBlob == nullptr)
 		{
