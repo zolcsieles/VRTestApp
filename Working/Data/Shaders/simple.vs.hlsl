@@ -16,6 +16,7 @@ struct TResult
 {
 	float4 Position : SV_POSITION;
 	float3 Color : COLOR;
+	float2 uv : TEXCOORD;
 };
 
 TResult main(Input inp)
@@ -39,6 +40,7 @@ TResult main(Input inp)
 
 	ret.Position = mul(float4(inp.pos + shift2 + shift, 1.0f), proj);
 	ret.Color = inp.color * inp.tc.x + inp.color2 * inp.tc.y;
+	ret.uv = inp.tc;
 
 	return ret;
 }
