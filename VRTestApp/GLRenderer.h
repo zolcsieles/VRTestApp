@@ -6,10 +6,23 @@ typedef IShader<GLuint, void> GLFragmentShader;
 
 struct GLBuffer
 {
-	GLuint bufferId;
+	GLuint mBufferId;
 
-	GLBuffer() : bufferId(0)
+	size_t mSize;
+
+	GLBuffer() : mBufferId(0), mSize(-1)
 	{}
+
+	GLBuffer(GLuint bufferId) : mBufferId(bufferId), mSize(-1)
+	{}
+
+	GLBuffer(GLuint bufferId, size_t size) : mBufferId(bufferId), mSize(size)
+	{}
+
+	void SetSize(size_t size)
+	{
+		mSize = size;
+	}
 };
 
 class GLModel : public IModel<GLBuffer>
@@ -106,7 +119,7 @@ public:
 		unsigned int slotSize = layout->GetSlotSize(slot);
 		unsigned int sizeOfBuffer = nVertices*slotSize;
 
-		actualModel->mSlots[slot].bufferId = _CreateAndUploadBuffer(sizeOfBuffer, GL_ARRAY_BUFFER, vertData);
+		actualModel->mSlots[slot].mBufferId = _CreateAndUploadBuffer(sizeOfBuffer, GL_ARRAY_BUFFER, vertData);
 
 		for (unsigned int i = 0; i < countInSlot; ++i)
 		{
@@ -122,8 +135,27 @@ public:
 	GLBuffer* CreateIndexBuffer(int nIndices, const void* indexData)
 	{
 		unsigned int sizeOfBuffer = nIndices * sizeof(unsigned int);
-		actualModel->mIndex.bufferId = _CreateAndUploadBuffer(sizeOfBuffer, GL_ELEMENT_ARRAY_BUFFER, indexData);
+		actualModel->mIndex.mBufferId = _CreateAndUploadBuffer(sizeOfBuffer, GL_ELEMENT_ARRAY_BUFFER, indexData);
 		return &actualModel->mIndex;
+	}
+
+	GLBuffer* CreateConstantBuffer(int sizeOfBuffer)
+	{
+		GLuint temp;
+		gl::glGenBuffers(1, &temp);
+		return new GLBuffer(temp, sizeOfBuffer);
+	}
+
+	void UpdateConstantBuffer(GLBuffer* buffer, void* data)
+	{
+		gl::glBindBufferBase(GL_UNIFORM_BUFFER, 0, buffer->mBufferId);
+		gl::glBufferData(GL_UNIFORM_BUFFER, buffer->mSize, data, GL_STATIC_DRAW);
+	}
+
+	void ActualizeConstantBuffer(GLBuffer* constBuffer, GLShaderProgram* shaderProgram, const char* blockName)
+	{
+		GLuint idx = gl::glGetUniformBlockIndex(shaderProgram->GetID(), blockName);
+		gl::glUniformBlockBinding(shaderProgram->GetID(), idx, 0);
 	}
 
 	template<PRIMITIVE_TOPOLOGY pt>

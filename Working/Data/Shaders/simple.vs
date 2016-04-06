@@ -1,6 +1,7 @@
 #version 440
 
 uniform BlockName {
+	mat4x4 proj;
 	vec3 shift;
 } Block;
 
@@ -26,6 +27,6 @@ void main()
 
 	vec3 shift2 = { 0.0f, 0.0f,-1.0f };
 
-	gl_Position = mtx * vec4(pos + shift2 + Block.shift, 1.0);
+	gl_Position = vec4(pos + shift2 + Block.shift, 1.0) * Block.proj;
 	col = color + color2;
 }

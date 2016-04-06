@@ -9,11 +9,6 @@ enum BufferMask {
 
 class Layout;
 
-class ShaderConstBuffer
-{
-
-};
-
 template<typename T, typename TBlob>
 class IShader
 {
@@ -74,8 +69,6 @@ public:
 	Tvs* GetVS() { return vertexShader; }
 	Tps* GetPS() { return pixelShader; }
 };
-
-
 
 template<typename T>
 struct FormatDescType

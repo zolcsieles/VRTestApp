@@ -55,6 +55,7 @@ struct MyTypes<D3D>
 	typedef D3DModel Model;
 	typedef D3DBuffer* VertexBuffer;
 	typedef D3DBuffer* IndexBuffer;
+	typedef D3DBuffer* ConstantBuffer;
 };
 #endif
 
@@ -69,6 +70,7 @@ struct MyTypes<OGL>
 	typedef GLModel Model;
 	typedef GLBuffer* VertexBuffer;
 	typedef GLBuffer* IndexBuffer;
+	typedef GLBuffer* ConstantBuffer;
 };
 #endif
 
@@ -118,6 +120,7 @@ const int nFaces = 2;
 
 struct _declspec(align(8)) VS_Constant
 {
+	zls::math::mat4 proj;
 	zls::math::vec3 shift;
 };
 
@@ -132,6 +135,7 @@ protected:
 	typedef typename MyTypes<xRenderer>::Model MyModel;
 	typedef typename MyTypes<xRenderer>::VertexBuffer MyVertexBuffer;
 	typedef typename MyTypes<xRenderer>::IndexBuffer MyIndexBuffer;
+	typedef typename MyTypes<xRenderer>::ConstantBuffer MyConstantBuffer;
 
 protected:
 	MyRenderer* ir;
@@ -143,12 +147,22 @@ protected:
 
 	MyVertexBuffer vertBuffer, colorBuffer;
 	MyIndexBuffer indexBuffer;
+	MyConstantBuffer constantBuffer;
 
 	VS_Constant xconstantBuffer;
 public:
 	virtual void Init(Window* wnd) = 0;
-	virtual void GetUniforms() = 0;
-	virtual void SetUniforms(float x, float y, float z) = 0;
+	void SetUniforms(float x, float y, float z)
+	{
+		xconstantBuffer.shift.x = x;
+		xconstantBuffer.shift.y = y;
+		xconstantBuffer.shift.z = z;
+
+		xconstantBuffer.proj.SetSymetricFrustum(1.0f, 10.0f, 1.0f, 1.0f);
+
+		ir->UpdateConstantBuffer(constantBuffer, &xconstantBuffer);
+		ir->ActualizeConstantBuffer(constantBuffer, simple, "BlockName");
+	}
 
 	SDLAppWindow()
 	{
@@ -176,7 +190,7 @@ public:
 		fs = ir->CreatePixelShaderFromSourceFile("Data/Shaders/simple.fs");
 		simple = ir->CreateShaderProgram(vs, fs, &myLayout);
 
-		GetUniforms();
+		constantBuffer = ir->CreateConstantBuffer(sizeof(VS_Constant));
 	}
 
 	void InitGeometry()
@@ -208,13 +222,16 @@ public:
 };
 
 #if defined(USE_GX_OPENGL)
+/************************************************************************/
+/*   OOO  PPPP  EEEEE N   N      GGGG L                                 */
+/*  O   O P   P E     NN  N     G     L                                 */
+/*  O   O PPPP  EEEE  N N N     G GGG L                                 */
+/*  O   O P     E     N  NN     G   G L                                 */
+/*   OOO  P     EEEEE N   N      GGG  LLLLL                             */
+/************************************************************************/
 class GLAPP : public SDLAppWindow<OGL>
 {
-	GLuint constantBuffer;
 public:
-	void GetUniforms();
-	void SetUniforms(float x, float y, float z);
-
 	void Init(Window* wnd)
 	{
 		if (!SDL_GL_CreateContext(wnd->window))
@@ -238,14 +255,16 @@ public:
 } glAppWindow;
 #endif
 #if defined(USE_GX_D3D11)
-
+/************************************************************************/
+/*  DDDD  I RRRR  EEEEE  CCCC TTTTT     X   X                           */
+/*  D   D I R   R E     C       T        X X                            */
+/*  D   D I RRRR  EEEE  C       T         X                             */
+/*  D   D I R  R  E     C       T        X X                            */
+/*  DDDD  I R   R EEEEE  CCCC   T       X   X                           */
+/************************************************************************/
 class DXAPP : public SDLAppWindow<D3D>
 {
-	ID3D11Buffer* constantBuffer;
 public:
-	void GetUniforms();
-	void SetUniforms(float x, float y, float z);
-
 	void Init(Window* wnd)
 	{
 		SDL_SysWMinfo wmInfo;
@@ -293,48 +312,9 @@ public:
 //----------------------------------------------
 //----------------------------------------------
 
-void DXAPP::GetUniforms()
-{
-	D3D11_BUFFER_DESC cbDesc;
-	cbDesc.ByteWidth = sizeof(VS_Constant);
-	cbDesc.Usage = D3D11_USAGE_DEFAULT;
-	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbDesc.CPUAccessFlags = 0;
-	cbDesc.MiscFlags = 0;
-	cbDesc.StructureByteStride = 0;
-
-	HRESULT hr = ir->dev->CreateBuffer(&cbDesc, NULL, &constantBuffer);
-}
-
-void DXAPP::SetUniforms(float x, float y, float z)
-{
-	xconstantBuffer.shift.x = x;
-	xconstantBuffer.shift.y = y;
-	xconstantBuffer.shift.z = z;
-
-	ir->devcon->UpdateSubresource(constantBuffer, 0, nullptr, &xconstantBuffer, 0, 0);
-	ir->devcon->VSSetConstantBuffers(0, 1, &constantBuffer);
-}
 
 //----------------------------------------------
 
-void GLAPP::GetUniforms()
-{
-	gl::glGenBuffers(1, &constantBuffer);
-}
-
-void GLAPP::SetUniforms(float x, float y, float z)
-{
-	xconstantBuffer.shift.x = x;
-	xconstantBuffer.shift.y = y;
-	xconstantBuffer.shift.z = z;
-
-	gl::glBindBufferBase(GL_UNIFORM_BUFFER, 0, constantBuffer);
-	gl::glBufferData(GL_UNIFORM_BUFFER, sizeof(xconstantBuffer), &xconstantBuffer, GL_STATIC_DRAW);
-	GLuint idx = gl::glGetUniformBlockIndex(simple->GetID(), "BlockName");
-
-	gl::glUniformBlockBinding(simple->GetID(), idx, 0);
-}
 
 //----------------------------------------------
 //----------------------------------------------

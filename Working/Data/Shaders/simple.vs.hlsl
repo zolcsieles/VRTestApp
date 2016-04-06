@@ -1,5 +1,6 @@
 cbuffer InputBuffer
 {
+	float4x4 proj;
 	float3 shift;
 };
 
@@ -28,7 +29,7 @@ TResult main(float3 pos : POSITION, float3 color : COLOR, float3 color2 : COLOR1
 		
 	float3 shift2 = float3(0.0f, 0.0f,-1.0);
 
-	ret.Position = mul(float4(pos + shift2 + shift, 1.0f), mtx);
+	ret.Position = mul(float4(pos + shift2 + shift, 1.0f), proj);
 	ret.Color = color + color2;
 
 	return ret;

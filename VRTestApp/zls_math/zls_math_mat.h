@@ -123,7 +123,7 @@ namespace zls
 				m[1][0] =           m[1][2] = m[1][3] =
 				m[2][0] = m[2][1] =           m[2][3] = 
 				m[3][0] = m[3][1] = m[3][2]           = zls::math::traits<T>::ZERO;
-				m[0][0] = m[1][1] = m[2][2] = m[4][4] = zls::math::traits<T>::ONE;
+				m[0][0] = m[1][1] = m[2][2] = m[3][3] = zls::math::traits<T>::ONE;
 			}
 
 			void SetTranslate(T x, T y, T z)
@@ -182,8 +182,6 @@ namespace zls
 
 			void SetSymetricFrustum(const T _near, const T _far, T _top, T _right)
 			{
-				const T n2 = 2 * _near;
-				const T fpn = _far + _near;
 				const T fmn = _far - _near;
 
 				m[0][0] = _near / _right;
@@ -198,8 +196,8 @@ namespace zls
 
 				m[0][2] = 0.0;
 				m[1][2] = 0.0;
-				m[2][2] = (-fpn) / fmn;
-				m[3][2] = (-n2*_far) / fmn;
+				m[2][2] = -(_far+_near) / fmn;
+				m[3][2] = (-2*_far*_near) / fmn;
 
 				m[0][3] = 0.0;
 				m[1][3] = 0.0;

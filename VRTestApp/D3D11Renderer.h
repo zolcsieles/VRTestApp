@@ -11,6 +11,9 @@ struct D3DBuffer
 
 	D3DBuffer() : buffer(nullptr)
 	{}
+
+	D3DBuffer(ID3D11Buffer* _buffer) : buffer(_buffer)
+	{}
 };
 
 class D3DModel : IModel<D3DBuffer>
@@ -35,6 +38,59 @@ protected:
 	ID3D11Device* dev;
 	ID3D11DeviceContext* devcon;
 	ID3D11RenderTargetView* rtv;
+
+	ID3D11Buffer* _CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
+	{
+		ID3D11Buffer* temp;
+
+		D3D11_BUFFER_DESC bufferDesc;
+		bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+		bufferDesc.ByteWidth = sizeOfBuffer;
+		bufferDesc.BindFlags = bindFlags;
+		bufferDesc.CPUAccessFlags = 0;
+		bufferDesc.MiscFlags = 0;
+
+		D3D11_SUBRESOURCE_DATA bufferData;
+		bufferData.pSysMem = data;
+		bufferData.SysMemPitch = 0;
+		bufferData.SysMemSlicePitch = 0;
+
+		//Create and upload
+		HRESULT hr;
+		hr = dev->CreateBuffer(&bufferDesc, &bufferData, &temp);
+
+		return temp;
+	}
+
+	ID3D11Buffer* _CreateBuffer(int sizeOfBuffer, unsigned int bindFlags)
+	{
+		ID3D11Buffer* temp;
+
+		D3D11_BUFFER_DESC cbDesc;
+		cbDesc.ByteWidth = sizeOfBuffer;
+		cbDesc.Usage = D3D11_USAGE_DEFAULT;
+		cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		cbDesc.CPUAccessFlags = 0;
+		cbDesc.MiscFlags = 0;
+		cbDesc.StructureByteStride = 0;
+
+		HRESULT hr = dev->CreateBuffer(&cbDesc, NULL, &temp);
+		
+		return temp;
+	}
+
+	void _SetBuffers()
+	{
+		if (actualModel->mIndex.buffer != nullptr)
+			devcon->IASetIndexBuffer(actualModel->mIndex.buffer, FormatDescType<unsigned int>::DXGIFormats[0], 0);
+
+		UINT offset = 0;
+		for (unsigned int i = 0; i < actualModel->mLayout->GetSlotCount(); ++i)
+		{
+			UINT stride = actualModel->mLayout->GetSlotSize(i);
+			devcon->IASetVertexBuffers(i, 1, &(actualModel->mSlots[i].buffer), &stride, &offset);
+		}
+	}
 
 public:
 	D3DRenderer() : swapchain(nullptr), dev(nullptr), devcon(nullptr), rtv(nullptr)
@@ -87,29 +143,6 @@ public:
 		actualModel = model;
 	}
 
-	ID3D11Buffer* _CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
-	{
-		ID3D11Buffer* temp;
-
-		D3D11_BUFFER_DESC bufferDesc;
-		bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-		bufferDesc.ByteWidth = sizeOfBuffer;
-		bufferDesc.BindFlags = bindFlags;
-		bufferDesc.CPUAccessFlags = 0;
-		bufferDesc.MiscFlags = 0;
-
-		D3D11_SUBRESOURCE_DATA bufferData;
-		bufferData.pSysMem = data;
-		bufferData.SysMemPitch = 0;
-		bufferData.SysMemSlicePitch = 0;
-
-		//Create and upload
-		HRESULT hr;
-		hr = dev->CreateBuffer(&bufferDesc, &bufferData, &temp);
-
-		return temp;
-	}
-
 	D3DBuffer* CreateVertexBuffer(unsigned int slot, int nVertices, const void* vertData)
 	{
 		const int sizeOfBuffer = actualModel->mLayout->GetSlotSize(slot) * nVertices;
@@ -124,19 +157,20 @@ public:
 		return &actualModel->mIndex;
 	}
 
-	void _SetBuffers()
+	D3DBuffer* CreateConstantBuffer(int sizeOfBuffer)
 	{
-		if (actualModel->mIndex.buffer != nullptr)
-			devcon->IASetIndexBuffer(actualModel->mIndex.buffer, FormatDescType<unsigned int>::DXGIFormats[0], 0);
-
-		UINT offset = 0;
-		for (unsigned int i = 0; i < actualModel->mLayout->GetSlotCount(); ++i)
-		{
-			UINT stride = actualModel->mLayout->GetSlotSize(i);
-			devcon->IASetVertexBuffers(i, 1, &(actualModel->mSlots[i].buffer), &stride, &offset);
-		}
+		return new D3DBuffer(_CreateBuffer(sizeOfBuffer, D3D11_BIND_CONSTANT_BUFFER));
 	}
 
+	void UpdateConstantBuffer(D3DBuffer* constBuffer, void* data)
+	{
+		devcon->UpdateSubresource(constBuffer->buffer, 0, nullptr, data, 0, 0);
+	}
+
+	void ActualizeConstantBuffer(D3DBuffer* constBuffer, D3DShaderProgram* shaderProgram, const char* blockName)
+	{
+		devcon->VSSetConstantBuffers(0, 1, &constBuffer->buffer);
+	}
 	template<PRIMITIVE_TOPOLOGY pt>
 	void RenderIndexed(unsigned int nIndices)
 	{
@@ -228,8 +262,7 @@ public:
 
 	D3DModel* CreateModel(Layout* layout)
 	{
-		D3DModel* model = new D3DModel(layout);
-		return model;
+		return new D3DModel(layout);
 	}
 
 	//for D3DRenderer
