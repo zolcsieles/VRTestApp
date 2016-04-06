@@ -1,5 +1,9 @@
 #version 440
 
+uniform BlockName {
+	vec3 shift;
+} Block;
+
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 color;
 layout(location = 2) in vec3 color2;
@@ -7,6 +11,21 @@ out vec3 col;
 
 void main()
 {
-	gl_Position = vec4(pos, 1.0);
+	float near = 1.0f;
+	float far = 10.0f;
+	float horiz = 1.0f;
+	float vert = 1.0f;
+
+	mat4x4 mtx =
+	{
+		{ near / horiz, 0.0f, 0.0f, 0.0f },
+		{ 0.0f, near / vert, 0.0f, 0.0f },
+		{ 0.0f, 0.0f, -(far + near) / (far - near), -(2 * far*near) / (far - near) },
+		{ 0.0f, 0.0f, -1.0f, 0.0f }
+	};
+
+	vec3 shift2 = { 0.0f, 0.0f,-1.0f };
+
+	gl_Position = mtx * vec4(pos + shift2 + Block.shift, 1.0);
 	col = color + color2;
 }

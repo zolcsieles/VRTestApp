@@ -213,10 +213,3 @@ private:
 
 	}
 };
-
-/*
-typedef GLRenderer MyRenderer;
-typedef GLVertexShader MyVertexShader;
-typedef GLFragmentShader MyPixelShader;
-typedef GLShaderProgram MyShaderProgram;
-*/

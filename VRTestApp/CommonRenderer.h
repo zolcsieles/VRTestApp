@@ -7,19 +7,12 @@ enum BufferMask {
 	DEPTH_BUFFER = 2,
 };
 
-class ITexture
-{
-};
-
-class IVertexBuffer
-{
-};
-
-class IIndexBuffer
-{
-};
-
 class Layout;
+
+class ShaderConstBuffer
+{
+
+};
 
 template<typename T, typename TBlob>
 class IShader
@@ -38,9 +31,18 @@ public:
 
 	operator T()
 	{
-		return shader;
+		return GetShader();
 	}
 	operator T*()
+	{
+		return GetShaderPtr();
+	}
+
+	T GetShader()
+	{
+		return shader;
+	}
+	T* GetShaderPtr()
 	{
 		return &shader;
 	}
@@ -374,3 +376,11 @@ public:
 	{
 	}
 };
+
+
+/*
+	TODO:
+	- Uniforms
+	- Textures
+	- RenderTarget
+*/

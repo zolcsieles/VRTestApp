@@ -116,6 +116,11 @@ const int SizeOfColors = sizeof(zls::math::vec3)*nVertices;
 const int nVertexPerFace = 3;
 const int nFaces = 2;
 
+struct _declspec(align(8)) VS_Constant
+{
+	zls::math::vec3 shift;
+};
+
 template<RENDERER xRenderer>
 class SDLAppWindow
 {
@@ -138,8 +143,12 @@ protected:
 
 	MyVertexBuffer vertBuffer, colorBuffer;
 	MyIndexBuffer indexBuffer;
+
+	VS_Constant xconstantBuffer;
 public:
 	virtual void Init(Window* wnd) = 0;
+	virtual void GetUniforms() = 0;
+	virtual void SetUniforms(float x, float y, float z) = 0;
 
 	SDLAppWindow()
 	{
@@ -166,6 +175,8 @@ public:
 		vs = ir->CreateVertexShaderFromSourceFile("Data/Shaders/simple.vs");
 		fs = ir->CreatePixelShaderFromSourceFile("Data/Shaders/simple.fs");
 		simple = ir->CreateShaderProgram(vs, fs, &myLayout);
+
+		GetUniforms();
 	}
 
 	void InitGeometry()
@@ -185,6 +196,9 @@ public:
 
 	void Render()
 	{
+		float y = (GetTickCount() % 10000) / 10000.0f;
+		SetUniforms(0.0f, y, 0.0f);
+
 		ir->BindModel(quad);
 		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
 
@@ -196,7 +210,11 @@ public:
 #if defined(USE_GX_OPENGL)
 class GLAPP : public SDLAppWindow<OGL>
 {
+	GLuint constantBuffer;
 public:
+	void GetUniforms();
+	void SetUniforms(float x, float y, float z);
+
 	void Init(Window* wnd)
 	{
 		if (!SDL_GL_CreateContext(wnd->window))
@@ -223,7 +241,11 @@ public:
 
 class DXAPP : public SDLAppWindow<D3D>
 {
+	ID3D11Buffer* constantBuffer;
 public:
+	void GetUniforms();
+	void SetUniforms(float x, float y, float z);
+
 	void Init(Window* wnd)
 	{
 		SDL_SysWMinfo wmInfo;
@@ -238,7 +260,7 @@ public:
 		sd.BufferDesc.Width = dispWidth;
 		sd.BufferDesc.Height = dispHeight;
 		sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		sd.BufferDesc.RefreshRate.Numerator = 60;
+		sd.BufferDesc.RefreshRate.Numerator = 60; //0, ha no vsync
 		sd.BufferDesc.RefreshRate.Denominator = 1;
 		sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		sd.OutputWindow = hWnd;
@@ -268,6 +290,54 @@ public:
 } d3dAppWindow;
 #endif
 
+//----------------------------------------------
+//----------------------------------------------
+
+void DXAPP::GetUniforms()
+{
+	D3D11_BUFFER_DESC cbDesc;
+	cbDesc.ByteWidth = sizeof(VS_Constant);
+	cbDesc.Usage = D3D11_USAGE_DEFAULT;
+	cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbDesc.CPUAccessFlags = 0;
+	cbDesc.MiscFlags = 0;
+	cbDesc.StructureByteStride = 0;
+
+	HRESULT hr = ir->dev->CreateBuffer(&cbDesc, NULL, &constantBuffer);
+}
+
+void DXAPP::SetUniforms(float x, float y, float z)
+{
+	xconstantBuffer.shift.x = x;
+	xconstantBuffer.shift.y = y;
+	xconstantBuffer.shift.z = z;
+
+	ir->devcon->UpdateSubresource(constantBuffer, 0, nullptr, &xconstantBuffer, 0, 0);
+	ir->devcon->VSSetConstantBuffers(0, 1, &constantBuffer);
+}
+
+//----------------------------------------------
+
+void GLAPP::GetUniforms()
+{
+	gl::glGenBuffers(1, &constantBuffer);
+}
+
+void GLAPP::SetUniforms(float x, float y, float z)
+{
+	xconstantBuffer.shift.x = x;
+	xconstantBuffer.shift.y = y;
+	xconstantBuffer.shift.z = z;
+
+	gl::glBindBufferBase(GL_UNIFORM_BUFFER, 0, constantBuffer);
+	gl::glBufferData(GL_UNIFORM_BUFFER, sizeof(xconstantBuffer), &xconstantBuffer, GL_STATIC_DRAW);
+	GLuint idx = gl::glGetUniformBlockIndex(simple->GetID(), "BlockName");
+
+	gl::glUniformBlockBinding(simple->GetID(), idx, 0);
+}
+
+//----------------------------------------------
+//----------------------------------------------
 void MyExit()
 {
 	shutdownGX();
@@ -408,7 +478,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		Events(dt);
 		
 		monoRenderFrame();
-		Sleep(50);
+		//Sleep(5);
 	}
 
 	return 0;

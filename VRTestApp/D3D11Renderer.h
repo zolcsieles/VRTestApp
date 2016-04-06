@@ -17,7 +17,7 @@ class D3DModel : IModel<D3DBuffer>
 {
 private:
 	friend class D3DRenderer;
-	//std::vector<unsigned int> slotSize;
+	
 public:
 	D3DModel(Layout* layout) : IModel(layout)
 	{
@@ -31,10 +31,10 @@ private:
 	D3DModel* actualModel;
 
 protected:
-	IDXGISwapChain* swapchain; //SwapChain
-	ID3D11Device* dev; //Device
-	ID3D11DeviceContext* devcon; //Device Context
-	ID3D11RenderTargetView* rtv; //RenderTargetView
+	IDXGISwapChain* swapchain;
+	ID3D11Device* dev;
+	ID3D11DeviceContext* devcon;
+	ID3D11RenderTargetView* rtv;
 
 public:
 	D3DRenderer() : swapchain(nullptr), dev(nullptr), devcon(nullptr), rtv(nullptr)
@@ -265,10 +265,3 @@ private:
 	ID3D11RenderTargetView* GetRenderTargetViewPtr() { return rtv; }
 	ID3D11RenderTargetView** GetRenderTargetViewPtrPtr() { return &rtv; }
 };
-
-/*
-typedef D3DRenderer MyRenderer;
-typedef D3DVertexShader MyVertexShader;
-typedef D3DPixelShader MyPixelShader;
-typedef D3DShaderProgram MyShaderProgram;
-*/
