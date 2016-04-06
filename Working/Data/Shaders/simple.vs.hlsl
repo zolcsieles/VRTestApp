@@ -4,13 +4,21 @@ cbuffer InputBuffer
 	float3 shift;
 };
 
+struct Input
+{
+	float3 pos : POSITION;
+	float3 color : COLOR;
+	float3 color2 : COLOR1;
+	float2 tc : TEXCOORD;
+};
+
 struct TResult
 {
 	float4 Position : SV_POSITION;
 	float3 Color : COLOR;
 };
 
-TResult main(float3 pos : POSITION, float3 color : COLOR, float3 color2 : COLOR1)
+TResult main(Input inp)
 {
 	TResult ret;
 
@@ -29,8 +37,8 @@ TResult main(float3 pos : POSITION, float3 color : COLOR, float3 color2 : COLOR1
 		
 	float3 shift2 = float3(0.0f, 0.0f,-1.0);
 
-	ret.Position = mul(float4(pos + shift2 + shift, 1.0f), proj);
-	ret.Color = color + color2;
+	ret.Position = mul(float4(inp.pos + shift2 + shift, 1.0f), proj);
+	ret.Color = inp.color * inp.tc.x + inp.color2 * inp.tc.y;
 
 	return ret;
 }

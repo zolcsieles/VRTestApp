@@ -100,11 +100,13 @@ template<> const DXGI_FORMAT FormatDescType<float>::DXGIFormats[] = { DXGI_FORMA
 enum FormatDescSemanticEnum {
 	FDS_POSITION,
 	FDS_COLOR,
+	FDS_TEXCOORD,
 };
 
 static const char* FormatDescSemanticName[] = {
 	"POSITION",
-	"COLOR"
+	"COLOR",
+	"TEXCOORD"
 };
 
 
@@ -373,7 +375,6 @@ public:
 
 /*
 	TODO:
-	- Uniforms
 	- Textures
 	- RenderTarget
 */

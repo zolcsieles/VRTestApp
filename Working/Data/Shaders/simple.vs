@@ -8,6 +8,7 @@ uniform BlockName {
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 color;
 layout(location = 2) in vec3 color2;
+layout(location = 3) in vec2 tc;
 out vec3 col;
 
 void main()
@@ -28,5 +29,5 @@ void main()
 	vec3 shift2 = { 0.0f, 0.0f,-1.0f };
 
 	gl_Position = vec4(pos + shift2 + Block.shift, 1.0) * Block.proj;
-	col = color + color2;
+	col = color * tc.x + color2 * tc.y;
 }

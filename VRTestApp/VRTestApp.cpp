@@ -35,6 +35,80 @@
 
 #include "CommonRenderer.h"
 
+class TGAFile
+{
+	char* buffer;
+	int bufferSize;
+
+	unsigned char* imageptr;
+#pragma pack(push, 1)
+	struct TGAHeader
+	{ //https://en.wikipedia.org/wiki/Truevision_TGA
+		unsigned char idLength;
+		unsigned char colorMapType;
+		unsigned char imageType;
+
+		//unsigned char colorMapSpec[5];
+		unsigned short cms_firstIndex;
+		unsigned short cms_colorMapLen;
+		unsigned char cms_colorMapEntrySize;
+
+		//unsigned char imageSpec[10];
+		unsigned short is_xOrigin;
+		unsigned short is_yOrigin;
+		unsigned short is_iWidth;
+		unsigned short is_iHeight;
+		unsigned char is_iBPP;
+		unsigned char is_iDesc;
+	}*tgaHeader; //44 bytes
+#pragma pack(pop)
+
+	void RotateColor()
+	{
+		unsigned char* ptr = imageptr;
+		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
+		while (ptr < ptrE)
+		{
+			unsigned char t = *ptr;
+			*ptr = *(ptr + 2);
+			*(ptr + 2) = t;
+			ptr += 3;
+		}
+	}
+
+public:
+	void Load(const char* fileName)
+	{
+		zls::fs::ReadFile(fileName, &buffer, &bufferSize);
+		tgaHeader = (TGAHeader*)buffer;
+		imageptr = (unsigned char*)buffer + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize + 14;
+
+		RotateColor();
+	}
+
+	unsigned char* GetPtr()
+	{
+		return imageptr;
+	}
+
+	unsigned int GetWidth()
+	{
+		return tgaHeader->is_iWidth;
+	}
+
+	unsigned int GetHeight()
+	{
+		return tgaHeader->is_iHeight;
+	}
+
+	unsigned int GetPixelCount()
+	{
+		return GetWidth() * GetHeight();
+	}
+};
+
+
+
 enum RENDERER {
 	D3D,
 	OGL
@@ -81,28 +155,30 @@ int dispHeight = 480;
 FormatDesc<float> color2Descp(3, "color2", FDS_COLOR, 1, 1);
 FormatDesc<float> posDescp(3, "pos", FDS_POSITION, 0, 0);
 FormatDesc<float> colorDescp(3, "color", FDS_COLOR, 0, 0, posDescp.GetEndOffset());
+FormatDesc<float> texDescp(2, "tc", FDS_TEXCOORD, 0, 0, colorDescp.GetEndOffset());
 
 Layout myLayout;
 
 struct Vert {
 	zls::math::vec3 v_pos;
 	zls::math::vec3 v_col;
+	zls::math::vec2 v_tx;
 };
 const int nVertices = 4;
 Vert v_buffer[nVertices] =
 {
-	{ { -0.25f, 0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f } }, //0
-	{ { -0.5f, -0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f } }, //1
-	{ { 0.5f, -0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f } }, //2
-	{ { 0.75f, 0.5f, 0.0f }, { 0.0f, 0.0f, 0.0f } }, //3
+	{ { -0.25f, 0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } }, //0
+	{ { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f } }, //1
+	{ { 0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f } }, //2
+	{ { 0.75f, 0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f } }, //3
 };
 
 zls::math::vec3 v_col2[] =
 {
-	{ 0.0f, 0.0f, 0.0f },
-	{ 0.0f, 0.0f, 0.0f },
-	{ 0.0f, 0.0f, 0.0f },
-	{ 1.0f, 1.0f, 1.0f }
+	{ 0.0f, 0.0f, 1.0f },
+	{ 0.0f, 0.0f, 1.0f },
+	{ 0.0f, 0.0f, 1.0f },
+	{ 0.0f, 0.0f, 1.0f }
 };
 
 const int nIndices = 6;
@@ -149,7 +225,10 @@ protected:
 	MyIndexBuffer indexBuffer;
 	MyConstantBuffer constantBuffer;
 
+
 	VS_Constant xconstantBuffer;
+	TGAFile tga;
+
 public:
 	virtual void Init(Window* wnd) = 0;
 	void SetUniforms(float x, float y, float z)
@@ -169,9 +248,14 @@ public:
 		ir = new MyRenderer();
 	}
 
-	MyRenderer* GetIR()
+	void DoFuck()
 	{
-		return ir;
+		InitShaders();
+		InitGeometry();
+
+		ir->SetViewport(0, 0, dispWidth, dispHeight);
+		ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
+		tga.Load("Data/Textures/Circle.tga");
 	}
 
 	void monoRenderFrame()
@@ -206,6 +290,16 @@ public:
 		//COLOR
 		colorBuffer = ir->CreateVertexBuffer(1, nVertices, v_col2);
 		ir->UnbindModels();
+	}
+
+	void LoadTexture()
+	{
+
+	}
+
+	void InitTexture()
+	{
+
 	}
 
 	void Render()
@@ -291,20 +385,20 @@ public:
 		D3D_FEATURE_LEVEL FeatureLevel;
 
 		HRESULT hr = S_OK;
-		hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &FeatureLevels, 1, D3D11_SDK_VERSION, &sd, d3dAppWindow.GetIR()->GetSwapChainPtrPtr(), d3dAppWindow.GetIR()->GetDevicePtrPtr(), &FeatureLevel, d3dAppWindow.GetIR()->GetDeviceContextPtrPtr());
+		hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &FeatureLevels, 1, D3D11_SDK_VERSION, &sd, ir->GetSwapChainPtrPtr(), ir->GetDevicePtrPtr(), &FeatureLevel, ir->GetDeviceContextPtrPtr());
 
 		////Create Back buffer
 
 		//Get a pointer to the back buffer
 		ID3D11Texture2D* pBackBuffer;
-		hr = d3dAppWindow.GetIR()->GetSwapChainPtr()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+		hr = ir->GetSwapChainPtr()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
 
 		//Create a render-target view
-		d3dAppWindow.GetIR()->GetDevicePtr()->CreateRenderTargetView(pBackBuffer, NULL, d3dAppWindow.GetIR()->GetRenderTargetViewPtrPtr());
+		d3dAppWindow.ir->GetDevicePtr()->CreateRenderTargetView(pBackBuffer, NULL, ir->GetRenderTargetViewPtrPtr());
 		pBackBuffer->Release();
 
 		//Bind the view
-		ir->GetDeviceContextPtr()->OMSetRenderTargets(1, d3dAppWindow.GetIR()->GetRenderTargetViewPtrPtr(), NULL);
+		ir->GetDeviceContextPtr()->OMSetRenderTargets(1, ir->GetRenderTargetViewPtrPtr(), NULL);
 	}
 } d3dAppWindow;
 #endif
@@ -340,48 +434,14 @@ void InitGraphics()
 {
 #if defined(USE_GX_OPENGL)
 	glAppWindow.Init(&gx_wins[GX_OGL]);
+	glAppWindow.DoFuck();
 #endif
 #if defined(USE_GX_D3D11)
 	d3dAppWindow.Init(&gx_wins[GX_D3D]);
+	d3dAppWindow.DoFuck();
 #endif
 }
 
-void InitShaders()
-{
-#if defined(USE_GX_OPENGL)
-	glAppWindow.InitShaders();
-#endif
-#if defined(USE_GX_D3D11)
-	d3dAppWindow.InitShaders();
-#endif
-}
-void InitGeometry()
-{
-#if defined(USE_GX_OPENGL)
-	glAppWindow.InitGeometry();
-#endif
-#if defined(USE_GX_D3D11)
-	d3dAppWindow.InitGeometry();
-#endif
-}
-void SetViewport()
-{
-#if defined(USE_GX_OPENGL)
-	glAppWindow.GetIR()->SetViewport(0, 0, dispWidth, dispHeight);
-#endif
-#if defined(USE_GX_D3D11)
-	d3dAppWindow.GetIR()->SetViewport(0, 0, dispWidth, dispHeight);
-#endif
-}
-void SetClearColor()
-{
-#if defined(USE_GX_OPENGL)
-	glAppWindow.GetIR()->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
-#endif
-#if defined(USE_GX_D3D11)
-	d3dAppWindow.GetIR()->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
-#endif
-}
 void monoRenderFrame()
 {
 #if defined(USE_GX_OPENGL)
@@ -438,18 +498,15 @@ int _tmain(int argc, _TCHAR* argv[])
 	myLayout.AddElement(&color2Descp);
 	myLayout.AddElement(&posDescp);
 	myLayout.AddElement(&colorDescp);
+	myLayout.AddElement(&texDescp);
 	myLayout.Update();
 
 	InitGraphics();
-	InitShaders();
-	InitGeometry();
 
 	//Matrices
 
 	float tick0, tick1, dt;
 	tick0 = tick1 = GetTickCount() * (1.0f / 1000.0f);
-	SetViewport();
-	SetClearColor();
 	while (runing)
 	{
 		tick0 = tick1;
