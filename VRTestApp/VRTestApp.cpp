@@ -65,14 +65,17 @@ class TGAFile
 
 	void RotateColor()
 	{
-		unsigned char* ptr = imageptr;
+		unsigned char* pimage = imageptr;
+		unsigned char* ptr = (unsigned char*)buffer + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize + 14;
 		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
 		while (ptr < ptrE)
 		{
-			unsigned char t = *ptr;
-			*ptr = *(ptr + 2);
-			*(ptr + 2) = t;
+			pimage[0] = ptr[2];
+			pimage[1] = ptr[1];
+			pimage[2] = ptr[0];
+			pimage[3] = 0;
 			ptr += 3;
+			pimage += 4;
 		}
 	}
 
@@ -81,8 +84,9 @@ public:
 	{
 		zls::fs::ReadFile(fileName, &buffer, &bufferSize);
 		tgaHeader = (TGAHeader*)buffer;
-		imageptr = (unsigned char*)buffer + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize + 14;
-
+		
+		imageptr = new unsigned char[4*GetPixelCount()];
+		
 		RotateColor();
 	}
 
@@ -232,6 +236,9 @@ protected:
 public:
 	virtual void Init(Window* wnd) = 0;
 
+	virtual void InitTexture() = 0;
+	virtual void UseTexture() = 0;
+
 	SDLAppWindow()
 	{
 		ir = new MyRenderer();
@@ -239,12 +246,14 @@ public:
 
 	void DoFuck()
 	{
-		InitShaders();
-		InitGeometry();
-
 		ir->SetViewport(0, 0, dispWidth, dispHeight);
 		ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
+
+		InitShaders();
+		InitGeometry();
+		
 		tga.Load("Data/Textures/Circle.tga");
+		InitTexture();
 	}
 
 	void monoRenderFrame()
@@ -285,8 +294,9 @@ public:
 	{
 		float y = (GetTickCount() % 10000) / 10000.0f;
 		SetUniforms(0.0f, y, 0.0f);
-
+		
 		ir->BindModel(quad);
+		UseTexture();
 		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
 
 		ir->UnbindModels();
@@ -338,6 +348,13 @@ public:
 		gl::glCullFace(GL_BACK);
 		gl::glEnable(GL_CULL_FACE);
 	}
+
+
+	GLuint tex;
+	GLuint sampler;
+	void InitTexture();
+	void UseTexture();
+
 } glAppWindow;
 #endif
 #if defined(USE_GX_D3D11)
@@ -392,15 +409,91 @@ public:
 		//Bind the view
 		ir->GetDeviceContextPtr()->OMSetRenderTargets(1, ir->GetRenderTargetViewPtrPtr(), NULL);
 	}
+
+	void InitTexture();
+	void UseTexture();
+
+	ID3D11ShaderResourceView* tex;
+	ID3D11Texture2D* tex2d;
+	ID3D11SamplerState* samplerstate;
 } d3dAppWindow;
 #endif
 
 //----------------------------------------------
 //----------------------------------------------
 
+void GLAPP::InitTexture()
+{
+	gl::glGenTextures(1, &tex);
+	gl::glBindTexture(GL_TEXTURE_2D, tex);
+	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tga.GetWidth(), tga.GetHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, tga.GetPtr());
+	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	sampler = gl::glGetUniformLocation(simple->GetID(), "tex");
+}
+
+void GLAPP::UseTexture()
+{
+	gl::glActiveTexture(GL_TEXTURE0);
+	gl::glBindTexture(GL_TEXTURE_2D, tex);
+	gl::glProgramUniform1i(simple->GetID(), sampler, 0);
+}
 
 //----------------------------------------------
 
+void DXAPP::InitTexture()
+{
+	D3D11_TEXTURE2D_DESC desc;
+	desc.Width = tga.GetWidth();
+	desc.Height = tga.GetHeight();
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.SampleDesc.Quality = 0;
+	desc.Usage = D3D11_USAGE_DYNAMIC;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	desc.MiscFlags = 0;
+
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.CPUAccessFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA idata;
+	idata.pSysMem = tga.GetPtr();
+	idata.SysMemPitch = tga.GetWidth()*4;
+	idata.SysMemSlicePitch = tga.GetPixelCount();
+
+	HRESULT hr = ir->dev->CreateTexture2D(&desc, &idata, &tex2d);
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC vdesc;
+	memset(&vdesc, 0, sizeof(vdesc));
+	vdesc.Format = desc.Format;
+	vdesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	vdesc.Texture3D.MipLevels = desc.MipLevels;
+
+	ir->dev->CreateShaderResourceView(tex2d, &vdesc, &tex);
+
+
+	D3D11_SAMPLER_DESC sampDesc;
+	memset(&sampDesc, 0, sizeof(sampDesc));
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	sampDesc.MinLOD = 0;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	hr = ir->dev->CreateSamplerState(&sampDesc, &samplerstate);
+}
+
+void DXAPP::UseTexture()
+{
+	ir->devcon->PSSetShaderResources(0, 1, &tex);
+	ir->devcon->PSSetSamplers(0, 1, &samplerstate);
+}
 
 //----------------------------------------------
 //----------------------------------------------
