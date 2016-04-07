@@ -16,6 +16,31 @@ struct D3DBuffer
 	{}
 };
 
+struct D3DTexture
+{
+	ID3D11Texture2D* mTexture;
+	ID3D11ShaderResourceView* mShaderResourceView;
+	ID3D11SamplerState* mSamplerState;
+
+	unsigned int mBytePerRow;
+
+public:
+	D3DTexture() : mTexture(nullptr), mShaderResourceView(nullptr)
+	{}
+
+	D3DTexture(ID3D11Texture2D* _texture, ID3D11ShaderResourceView* _ShaderResourceView, ID3D11SamplerState* _SamplerState, unsigned int _bytePerRow) 
+		: mTexture(_texture)
+		, mShaderResourceView(_ShaderResourceView)
+		, mSamplerState(_SamplerState)
+		, mBytePerRow(_bytePerRow)
+	{}
+};
+
+class D3DSampler
+{
+	ID3D11SamplerState* sampler;
+};
+
 class D3DModel : IModel<D3DBuffer>
 {
 private:
@@ -192,6 +217,71 @@ public:
 	void UnbindModels()
 	{
 		actualModel = nullptr;
+	}
+
+	D3DTexture* CreateTexture2D(unsigned int width, unsigned int height)
+	{
+		D3D11_TEXTURE2D_DESC desc;
+		desc.Width = width;
+		desc.Height = height;
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		desc.CPUAccessFlags = 0;
+		desc.MiscFlags = 0;
+
+		/*
+		Upload default:
+		D3D11_SUBRESOURCE_DATA srdata;
+		srdata.pSysMem = pointer;
+		srdata.SysMemPitch = width*Bpp;
+		srdata.SysMemSlicePitch = 0;
+		//srdata is the 2. parameter of CreateTexture2D
+		*/
+
+		ID3D11Texture2D* texture;
+		HRESULT hr = dev->CreateTexture2D(&desc, nullptr, &texture);
+
+		//=-=-=-=-
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+		ZeroMemory(&srvDesc, sizeof(srvDesc));
+		srvDesc.Format = desc.Format;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = desc.MipLevels;
+
+		ID3D11ShaderResourceView* shaderResourceView;
+		hr = dev->CreateShaderResourceView(texture, &srvDesc, &shaderResourceView);
+
+		//=-=-=-=-
+		D3D11_SAMPLER_DESC sDesc;
+		ZeroMemory(&sDesc, sizeof(sDesc));
+		sDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		sDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		sDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+		sDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		sDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+		sDesc.MinLOD = 0;
+		sDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+		ID3D11SamplerState* samplerState;
+		hr = dev->CreateSamplerState(&sDesc, &samplerState);
+
+		return new D3DTexture(texture, shaderResourceView, samplerState, width * 4);
+	}
+
+	void UploadTextureData(D3DTexture* d3dTexture, void* data)
+	{
+		devcon->UpdateSubresource(d3dTexture->mTexture, 0, nullptr, data, d3dTexture->mBytePerRow, 0);
+	}
+
+	void ActivateTexture(D3DTexture* d3dTexture)
+	{
+		devcon->PSSetShaderResources(0, 1, &d3dTexture->mShaderResourceView);
+		devcon->PSSetSamplers(0, 1, &d3dTexture->mSamplerState);
 	}
 
 	D3DVertexShader* CreateVertexShaderFromSourceFile(const char* fName)

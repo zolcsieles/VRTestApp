@@ -131,9 +131,10 @@ struct MyTypes<D3D>
 	typedef D3DPixelShader PixelShader;
 	typedef D3DShaderProgram ShaderProgram;
 	typedef D3DModel Model;
-	typedef D3DBuffer* VertexBuffer;
-	typedef D3DBuffer* IndexBuffer;
-	typedef D3DBuffer* ConstantBuffer;
+	typedef D3DBuffer VertexBuffer;
+	typedef D3DBuffer IndexBuffer;
+	typedef D3DBuffer ConstantBuffer;
+	typedef D3DTexture Texture2D;
 };
 #endif
 
@@ -146,9 +147,10 @@ struct MyTypes<OGL>
 	typedef GLFragmentShader PixelShader;
 	typedef GLShaderProgram ShaderProgram;
 	typedef GLModel Model;
-	typedef GLBuffer* VertexBuffer;
-	typedef GLBuffer* IndexBuffer;
-	typedef GLBuffer* ConstantBuffer;
+	typedef GLBuffer VertexBuffer;
+	typedef GLBuffer IndexBuffer;
+	typedef GLBuffer ConstantBuffer;
+	typedef GLTexture Texture2D;
 };
 #endif
 
@@ -208,36 +210,35 @@ template<RENDERER xRenderer>
 class SDLAppWindow
 {
 protected:
-	typedef typename MyTypes<xRenderer>::Renderer MyRenderer;
-	typedef typename MyTypes<xRenderer>::VertexShader MyVertexShader;
-	typedef typename MyTypes<xRenderer>::PixelShader MyPixelShader;
-	typedef typename MyTypes<xRenderer>::ShaderProgram MyShaderProgram;
-	typedef typename MyTypes<xRenderer>::Model MyModel;
-	typedef typename MyTypes<xRenderer>::VertexBuffer MyVertexBuffer;
-	typedef typename MyTypes<xRenderer>::IndexBuffer MyIndexBuffer;
-	typedef typename MyTypes<xRenderer>::ConstantBuffer MyConstantBuffer;
+	typedef typename MyTypes<xRenderer>::Renderer MyRenderer,*PMyRenderer;
+	typedef typename MyTypes<xRenderer>::VertexShader MyVertexShader,*PMyVertexShader;
+	typedef typename MyTypes<xRenderer>::PixelShader MyPixelShader,*PMyPixelShader;
+	typedef typename MyTypes<xRenderer>::ShaderProgram MyShaderProgram,*PMyShaderProgram;
+	typedef typename MyTypes<xRenderer>::Model MyModel,*PMyModel;
+	typedef typename MyTypes<xRenderer>::VertexBuffer MyVertexBuffer,*PMyVertexBuffer;
+	typedef typename MyTypes<xRenderer>::IndexBuffer MyIndexBuffer,*PMyIndexBuffer;
+	typedef typename MyTypes<xRenderer>::ConstantBuffer MyConstantBuffer,*PMyConstantBuffer;
+	typedef typename MyTypes<xRenderer>::Texture2D MyTexture2D,*PMyTexture2D;
 
 protected:
-	MyRenderer* ir;
+	PMyRenderer ir;
 
-	MyVertexShader *vs;
-	MyPixelShader *fs;
-	MyShaderProgram *simple;
-	MyModel *quad;
+	PMyVertexShader vs;
+	PMyPixelShader fs;
+	PMyShaderProgram simple;
+	PMyModel quad;
 
-	MyVertexBuffer vertBuffer, colorBuffer;
-	MyIndexBuffer indexBuffer;
-	MyConstantBuffer constantBuffer;
+	PMyVertexBuffer vertBuffer, colorBuffer;
+	PMyIndexBuffer indexBuffer;
+	PMyConstantBuffer constantBuffer;
 
 
 	VS_Constant xconstantBuffer;
 	TGAFile tga;
+	PMyTexture2D texture;
 
 public:
 	virtual void Init(Window* wnd) = 0;
-
-	virtual void InitTexture() = 0;
-	virtual void UseTexture() = 0;
 
 	SDLAppWindow()
 	{
@@ -315,6 +316,17 @@ public:
 		ir->ActualizeConstantBuffer(constantBuffer, simple, "BlockName");
 	}
 
+	void InitTexture()
+	{
+		texture = ir->CreateTexture2D(tga.GetWidth(), tga.GetHeight());
+		ir->UploadTextureData(texture, tga.GetPtr());
+	}
+
+	void UseTexture()
+	{
+		ir->ActivateTexture(texture);
+	}
+
 };
 
 #if defined(USE_GX_OPENGL)
@@ -348,13 +360,6 @@ public:
 		gl::glCullFace(GL_BACK);
 		gl::glEnable(GL_CULL_FACE);
 	}
-
-
-	GLuint tex;
-	GLuint sampler;
-	void InitTexture();
-	void UseTexture();
-
 } glAppWindow;
 #endif
 #if defined(USE_GX_D3D11)
@@ -409,91 +414,13 @@ public:
 		//Bind the view
 		ir->GetDeviceContextPtr()->OMSetRenderTargets(1, ir->GetRenderTargetViewPtrPtr(), NULL);
 	}
-
-	void InitTexture();
-	void UseTexture();
-
-	ID3D11ShaderResourceView* tex;
-	ID3D11Texture2D* tex2d;
-	ID3D11SamplerState* samplerstate;
 } d3dAppWindow;
 #endif
 
 //----------------------------------------------
 //----------------------------------------------
 
-void GLAPP::InitTexture()
-{
-	gl::glGenTextures(1, &tex);
-	gl::glBindTexture(GL_TEXTURE_2D, tex);
-	gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tga.GetWidth(), tga.GetHeight(), 0, GL_RGBA, GL_UNSIGNED_BYTE, tga.GetPtr());
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	sampler = gl::glGetUniformLocation(simple->GetID(), "tex");
-}
-
-void GLAPP::UseTexture()
-{
-	gl::glActiveTexture(GL_TEXTURE0);
-	gl::glBindTexture(GL_TEXTURE_2D, tex);
-	gl::glProgramUniform1i(simple->GetID(), sampler, 0);
-}
-
 //----------------------------------------------
-
-void DXAPP::InitTexture()
-{
-	D3D11_TEXTURE2D_DESC desc;
-	desc.Width = tga.GetWidth();
-	desc.Height = tga.GetHeight();
-	desc.MipLevels = 1;
-	desc.ArraySize = 1;
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.SampleDesc.Count = 1;
-	desc.SampleDesc.Quality = 0;
-	desc.Usage = D3D11_USAGE_DYNAMIC;
-	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	desc.MiscFlags = 0;
-
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.CPUAccessFlags = 0;
-
-	D3D11_SUBRESOURCE_DATA idata;
-	idata.pSysMem = tga.GetPtr();
-	idata.SysMemPitch = tga.GetWidth()*4;
-	idata.SysMemSlicePitch = tga.GetPixelCount();
-
-	HRESULT hr = ir->dev->CreateTexture2D(&desc, &idata, &tex2d);
-
-	D3D11_SHADER_RESOURCE_VIEW_DESC vdesc;
-	memset(&vdesc, 0, sizeof(vdesc));
-	vdesc.Format = desc.Format;
-	vdesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	vdesc.Texture3D.MipLevels = desc.MipLevels;
-
-	ir->dev->CreateShaderResourceView(tex2d, &vdesc, &tex);
-
-
-	D3D11_SAMPLER_DESC sampDesc;
-	memset(&sampDesc, 0, sizeof(sampDesc));
-	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-	sampDesc.MinLOD = 0;
-	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
-
-	hr = ir->dev->CreateSamplerState(&sampDesc, &samplerstate);
-}
-
-void DXAPP::UseTexture()
-{
-	ir->devcon->PSSetShaderResources(0, 1, &tex);
-	ir->devcon->PSSetSamplers(0, 1, &samplerstate);
-}
 
 //----------------------------------------------
 //----------------------------------------------

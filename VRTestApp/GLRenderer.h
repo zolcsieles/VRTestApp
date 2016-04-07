@@ -25,6 +25,19 @@ struct GLBuffer
 	}
 };
 
+struct GLTexture
+{
+	GLuint mTexture;
+	unsigned int mWidth;
+	unsigned int mHeight;
+public:
+	GLTexture(GLuint _texture, unsigned int _width, unsigned int _height)
+		: mTexture(_texture)
+		, mWidth(_width)
+		, mHeight(_height)
+	{}
+};
+
 class GLModel : public IModel<GLBuffer>
 {
 	friend class GLRenderer;
@@ -174,6 +187,29 @@ public:
 	{
 		gl::glBindVertexArray(0);
 		actualModel = nullptr;
+	}
+
+	GLTexture* CreateTexture2D(unsigned int width, unsigned int height)
+	{
+		GLuint texture;
+		gl::glGenTextures(1, &texture);
+		gl::glBindTexture(GL_TEXTURE_2D, texture);
+		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+		return new GLTexture(texture, width, height);
+	}
+
+	void UploadTextureData(GLTexture* glTexture, void* data)
+	{
+		gl::glBindTexture(GL_TEXTURE_2D, glTexture->mTexture);
+		gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, glTexture->mWidth, glTexture->mHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	}
+
+	void ActivateTexture(GLTexture* glTexture)
+	{
+		gl::glActiveTexture(GL_TEXTURE0);
+		gl::glBindTexture(GL_TEXTURE_2D, glTexture->mTexture);
 	}
 
 	GLVertexShader* CreateVertexShaderFromSourceFile(const char* fName)
