@@ -240,6 +240,9 @@ protected:
 public:
 	virtual void Init(Window* wnd) = 0;
 
+	virtual void PreRender() {}
+	virtual void InitRenderTarget() {}
+
 	SDLAppWindow()
 	{
 		ir = new MyRenderer();
@@ -252,6 +255,7 @@ public:
 
 		InitShaders();
 		InitGeometry();
+		InitRenderTarget();
 		
 		tga.Load("Data/Textures/Circle.tga");
 		InitTexture();
@@ -259,9 +263,7 @@ public:
 
 	void monoRenderFrame()
 	{
-		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
-		ir->ActivateProgram(simple);
-		
+		PreRender();
 		Render();
 
 		ir->SwapBuffers();
@@ -293,6 +295,8 @@ public:
 
 	void Render()
 	{
+		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
+		ir->ActivateProgram(simple);
 		float y = (GetTickCount() % 10000) / 10000.0f;
 		SetUniforms(0.0f, y, 0.0f);
 		
@@ -322,7 +326,7 @@ public:
 		ir->UploadTextureData(texture, tga.GetPtr());
 	}
 
-	void UseTexture()
+	virtual void UseTexture()
 	{
 		ir->ActivateTexture(texture);
 	}
@@ -360,6 +364,10 @@ public:
 		gl::glCullFace(GL_BACK);
 		gl::glEnable(GL_CULL_FACE);
 	}
+
+	void InitRenderTarget();
+	void PreRender();
+	void UseTexture();
 } glAppWindow;
 #endif
 #if defined(USE_GX_D3D11)
@@ -420,6 +428,72 @@ public:
 //----------------------------------------------
 //----------------------------------------------
 
+GLuint frameBuffer;
+GLTexture* renderTarget;
+GLuint renderBuffer;
+void GLAPP::InitRenderTarget()
+{
+	//InitFramebuffer
+	gl::glGenFramebuffers(1, &frameBuffer);
+	gl::glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
+
+	//Texture
+	renderTarget = ir->CreateTexture2D(dispWidth >> 1, dispHeight >> 1);
+
+	//Renderbuffer - Z buffer
+	gl::glGenRenderbuffers(1, &renderBuffer);
+	gl::glBindRenderbuffer(GL_RENDERBUFFER, renderBuffer);
+	gl::glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, renderTarget->mWidth, renderTarget->mHeight);
+	gl::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, renderBuffer);
+	gl::glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->mTexture, 0);
+
+	//DrawBuffer
+	gl::glDrawBuffer(GL_COLOR_ATTACHMENT0); //glDrawBuffers helyette???
+
+	//
+	if (gl::glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		ErrorExit("Basszad meg framebuffert.");
+
+
+	//Set default render buffer
+	gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void GLAPP::UseTexture()
+{
+	ir->ActivateTexture(renderTarget);
+// 	gl::glActiveTexture(GL_TEXTURE0);
+// 	gl::glBindTexture(GL_TEXTURE_2D, renderTarget);
+}
+
+void GLAPP::PreRender()
+{
+	//Use Render Target
+	gl::glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
+	gl::glViewport(0, 0, dispWidth >> 1, dispHeight >> 1);
+	
+	ir->SetClearColor(1.0, 0.0, 0.0, 0.5);
+	ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
+	
+	//Render
+	ir->ActivateProgram(simple);
+	ir->ActivateTexture(texture);
+	float y = (GetTickCount() % 10000) / 10000.0f;
+	SetUniforms(0.0f, y, 0.0f);
+
+	ir->BindModel(quad);
+	ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+
+	ir->UnbindModels();
+	ir->DeactivatePrograms();
+
+
+	ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
+	//Set default render target:
+	gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	gl::glViewport(0, 0, dispWidth, dispHeight);
+
+}
 //----------------------------------------------
 
 //----------------------------------------------
