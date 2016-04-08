@@ -387,4 +387,9 @@ private:
 
 	ID3D11RenderTargetView* GetRenderTargetViewPtr() { return rtv; }
 	ID3D11RenderTargetView** GetRenderTargetViewPtrPtr() { return &rtv; }
+
+	float* GetClearColor()
+	{
+		return mClearColor;
+	}
 };

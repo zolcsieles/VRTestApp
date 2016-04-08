@@ -241,7 +241,7 @@ public:
 	virtual void Init(Window* wnd) = 0;
 
 	virtual void PreRender() {}
-	virtual void InitRenderTarget() {}
+	virtual void InitRenderTarget() {};
 
 	SDLAppWindow()
 	{
@@ -263,6 +263,8 @@ public:
 
 	void monoRenderFrame()
 	{
+		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER); //Moved here to see debug in fos.
+
 		PreRender();
 		Render();
 
@@ -295,7 +297,6 @@ public:
 
 	void Render()
 	{
-		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
 		ir->ActivateProgram(simple);
 		float y = (GetTickCount() % 10000) / 10000.0f;
 		SetUniforms(0.0f, y, 0.0f);
@@ -330,7 +331,6 @@ public:
 	{
 		ir->ActivateTexture(texture);
 	}
-
 };
 
 #if defined(USE_GX_OPENGL)
@@ -422,6 +422,10 @@ public:
 		//Bind the view
 		ir->GetDeviceContextPtr()->OMSetRenderTargets(1, ir->GetRenderTargetViewPtrPtr(), NULL);
 	}
+
+	void InitRenderTarget();
+	void PreRender();
+	void UseTexture();
 } d3dAppWindow;
 #endif
 
@@ -462,16 +466,14 @@ void GLAPP::InitRenderTarget()
 void GLAPP::UseTexture()
 {
 	ir->ActivateTexture(renderTarget);
-// 	gl::glActiveTexture(GL_TEXTURE0);
-// 	gl::glBindTexture(GL_TEXTURE_2D, renderTarget);
 }
 
 void GLAPP::PreRender()
 {
 	//Use Render Target
 	gl::glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
-	gl::glViewport(0, 0, dispWidth >> 1, dispHeight >> 1);
-	
+	ir->SetViewport(0, 0, dispWidth >> 1, dispHeight >> 1);
+
 	ir->SetClearColor(1.0, 0.0, 0.0, 0.5);
 	ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
 	
@@ -491,10 +493,88 @@ void GLAPP::PreRender()
 	ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
 	//Set default render target:
 	gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	gl::glViewport(0, 0, dispWidth, dispHeight);
+	ir->SetViewport(0, 0, dispWidth, dispHeight);
 
 }
 //----------------------------------------------
+// GLuint frameBuffer;
+// GLTexture* renderTarget;
+// GLuint renderBuffer;
+
+
+ID3D11Texture2D* drenderTarget;
+ID3D11RenderTargetView* drenderTargetView;
+ID3D11ShaderResourceView* dshaderResourceView;
+
+ID3D11DepthStencilView* ddepthStencilView;
+void DXAPP::InitRenderTarget()
+{
+	HRESULT hr;
+	D3D11_TEXTURE2D_DESC texDesc;
+	ZeroMemory(&texDesc, sizeof(texDesc));
+	texDesc.Width = dispWidth >> 1;
+	texDesc.Height = dispHeight >> 1;
+	texDesc.MipLevels = 1;
+	texDesc.ArraySize = 1;
+	texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.Usage = D3D11_USAGE_DEFAULT;
+	texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+	texDesc.CPUAccessFlags = 0;
+	texDesc.MiscFlags = 0;
+	hr = ir->GetDevicePtr()->CreateTexture2D(&texDesc, nullptr, &drenderTarget);
+
+	D3D11_RENDER_TARGET_VIEW_DESC rtDesc;
+	rtDesc.Format = texDesc.Format;
+	rtDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+	rtDesc.Texture2D.MipSlice = 0;
+	hr = ir->GetDevicePtr()->CreateRenderTargetView(drenderTarget, &rtDesc, &drenderTargetView);
+
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+	srvDesc.Format = texDesc.Format;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MostDetailedMip = 0;
+	srvDesc.Texture2D.MipLevels = 1;
+	hr = ir->GetDevicePtr()->CreateShaderResourceView(drenderTarget, &srvDesc, &dshaderResourceView);
+}
+
+void DXAPP::UseTexture()
+{
+	//ir->ActivateTexture(drenderTarget);
+	ir->GetDeviceContextPtr()->PSSetShaderResources(0, 1, &dshaderResourceView);
+	//devcon->PSSetSamplers(0, 1, &d3dTexture->mSamplerState);
+}
+
+void DXAPP::PreRender()
+{
+	//Use Render Target
+//	gl::glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
+	ir->GetDeviceContextPtr()->OMSetRenderTargets(1, &drenderTargetView, NULL);
+	ir->SetViewport(0, 0, dispWidth >> 1, dispHeight >> 1);
+
+	ir->SetClearColor(1.0, 0.0, 0.0, 0.5);
+	//ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
+	ir->GetDeviceContextPtr()->ClearRenderTargetView(drenderTargetView, ir->GetClearColor());
+
+	//Render
+	ir->ActivateProgram(simple);
+	ir->ActivateTexture(texture);
+	float y = (GetTickCount() % 10000) / 10000.0f;
+	SetUniforms(0.0f, y, 0.0f);
+
+	ir->BindModel(quad);
+	ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+
+	ir->UnbindModels();
+	ir->DeactivatePrograms();
+
+
+	ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
+	//Set default render target:
+	ir->GetDeviceContextPtr()->OMSetRenderTargets(1, ir->GetRenderTargetViewPtrPtr(), NULL);
+	ir->SetViewport(0, 0, dispWidth, dispHeight);
+}
 
 //----------------------------------------------
 //----------------------------------------------
