@@ -35,84 +35,6 @@
 
 #include "CommonRenderer.h"
 
-class TGAFile
-{
-	char* buffer;
-	int bufferSize;
-
-	unsigned char* imageptr;
-#pragma pack(push, 1)
-	struct TGAHeader
-	{ //https://en.wikipedia.org/wiki/Truevision_TGA
-		unsigned char idLength;
-		unsigned char colorMapType;
-		unsigned char imageType;
-
-		//unsigned char colorMapSpec[5];
-		unsigned short cms_firstIndex;
-		unsigned short cms_colorMapLen;
-		unsigned char cms_colorMapEntrySize;
-
-		//unsigned char imageSpec[10];
-		unsigned short is_xOrigin;
-		unsigned short is_yOrigin;
-		unsigned short is_iWidth;
-		unsigned short is_iHeight;
-		unsigned char is_iBPP;
-		unsigned char is_iDesc;
-	}*tgaHeader; //44 bytes
-#pragma pack(pop)
-
-	void RotateColor()
-	{
-		unsigned char* pimage = imageptr;
-		unsigned char* ptr = (unsigned char*)buffer + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize + 14;
-		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
-		while (ptr < ptrE)
-		{
-			pimage[0] = ptr[2];
-			pimage[1] = ptr[1];
-			pimage[2] = ptr[0];
-			pimage[3] = 0;
-			ptr += 3;
-			pimage += 4;
-		}
-	}
-
-public:
-	void Load(const char* fileName)
-	{
-		zls::fs::ReadFile(fileName, &buffer, &bufferSize);
-		tgaHeader = (TGAHeader*)buffer;
-		
-		imageptr = new unsigned char[4*GetPixelCount()];
-		
-		RotateColor();
-	}
-
-	unsigned char* GetPtr()
-	{
-		return imageptr;
-	}
-
-	unsigned int GetWidth()
-	{
-		return tgaHeader->is_iWidth;
-	}
-
-	unsigned int GetHeight()
-	{
-		return tgaHeader->is_iHeight;
-	}
-
-	unsigned int GetPixelCount()
-	{
-		return GetWidth() * GetHeight();
-	}
-};
-
-
-
 enum RENDERER {
 	D3D,
 	OGL
@@ -206,6 +128,121 @@ struct _declspec(align(8)) VS_Constant
 	zls::math::vec3 shift;
 };
 
+class TGAFile
+{
+	char* buffer;
+	int bufferSize;
+
+	unsigned char* imageptr;
+#pragma pack(push, 1)
+	struct TGAHeader
+	{ //https://en.wikipedia.org/wiki/Truevision_TGA
+		unsigned char idLength;
+		unsigned char colorMapType;
+		unsigned char imageType;
+
+		//unsigned char colorMapSpec[5];
+		unsigned short cms_firstIndex;
+		unsigned short cms_colorMapLen;
+		unsigned char cms_colorMapEntrySize;
+
+		//unsigned char imageSpec[10];
+		unsigned short is_xOrigin;
+		unsigned short is_yOrigin;
+		unsigned short is_iWidth;
+		unsigned short is_iHeight;
+		unsigned char is_iBPP;
+		unsigned char is_iDesc;
+	}*tgaHeader; //44 bytes
+#pragma pack(pop)
+
+	void RotateColorOnly()
+	{
+		unsigned char* pimage = imageptr;
+		unsigned char* ptr = (unsigned char*)buffer + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize + 14;
+		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
+		while (ptr < ptrE)
+		{
+			pimage[0] = ptr[2];
+			pimage[1] = ptr[1];
+			pimage[2] = ptr[0];
+			pimage[3] = 0;
+			ptr += 3;
+			pimage += 4;
+		}
+	}
+
+	void RotateColorAndFlip()
+	{
+		unsigned char* pimage = imageptr + 4*GetWidth()*(GetHeight()-1);
+		unsigned char* ptr = (unsigned char*)buffer + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize + 14;
+		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
+		int cnt = GetWidth();
+		while (ptr < ptrE)
+		{
+			pimage[0] = ptr[2];
+			pimage[1] = ptr[1];
+			pimage[2] = ptr[0];
+			pimage[3] = 0;
+			ptr += 3;
+			pimage += 4;
+			if (--cnt == 0)
+			{
+				pimage -= GetWidth()*4*2;
+				cnt = GetWidth();
+			}
+		}
+		pimage += GetWidth() * 4;
+		if (pimage != imageptr)
+			ErrorExit("image");
+	}
+
+	void RotateColor(unsigned int renderer)
+	{
+		switch (renderer)
+		{
+		case D3D:
+			RotateColorOnly();
+			break;
+		case OGL:
+			RotateColorAndFlip();
+			break;
+		}
+	}
+
+public:
+	void Load(const char* fileName, RENDERER rendererType)
+	{
+		zls::fs::ReadFile(fileName, &buffer, &bufferSize);
+		tgaHeader = (TGAHeader*)buffer;
+
+		imageptr = new unsigned char[4 * GetPixelCount()];
+
+		RotateColor(rendererType);
+	}
+
+	unsigned char* GetPtr()
+	{
+		return imageptr;
+	}
+
+	unsigned int GetWidth()
+	{
+		return tgaHeader->is_iWidth;
+	}
+
+	unsigned int GetHeight()
+	{
+		return tgaHeader->is_iHeight;
+	}
+
+	unsigned int GetPixelCount()
+	{
+		return GetWidth() * GetHeight();
+	}
+};
+
+
 template<RENDERER xRenderer>
 class SDLAppWindow
 {
@@ -257,7 +294,7 @@ public:
 		InitGeometry();
 		InitRenderTarget();
 		
-		tga.Load("Data/Textures/Circle.tga");
+		tga.Load("Data/Textures/Circle.tga", xRenderer);
 		InitTexture();
 	}
 

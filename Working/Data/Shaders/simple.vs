@@ -31,5 +31,5 @@ void main()
 
 	gl_Position = vec4(pos + shift2 + Block.shift, 1.0) * Block.proj;
 	col = color * tc.x + color2 * tc.y;
-	uv = tc;
+	uv = vec2(tc.x, 1.0-tc.y);
 }
