@@ -487,11 +487,7 @@ public:
 		pBackBuffer->Release();
 
 		//Set directx device
-		ir->DX_SetSwapChain(_swapchain);
-		ir->DX_SetDevice(_dev);
-		ir->DX_SetDeviceContext(_devcon);
-		ir->DX_SetRenderTargetView(_rtv);
-
+		ir->DX_Defaults(_swapchain, _dev, _devcon, _rtv);
 
 		//Bind the view
 		ir->SetRenderTarget(nullptr);

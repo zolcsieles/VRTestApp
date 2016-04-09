@@ -85,6 +85,16 @@ private:
 	GLModel* actualModel;
 	GLRenderTarget* actualRenderTarget;
 
+
+	void _CreateTexture2D(unsigned int width, unsigned int height, void* data, GLuint* texture)
+	{
+		gl::glGenTextures(1, texture);
+		gl::glBindTexture(GL_TEXTURE_2D, *texture);
+		gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
+
 public:
 	void SetClearColor(float r, float g, float b, float a)
 	{
@@ -203,15 +213,6 @@ public:
 		actualModel = nullptr;
 	}
 
-	void _CreateTexture2D(unsigned int width, unsigned int height, void* data, GLuint* texture)
-	{
-		gl::glGenTextures(1, texture);
-		gl::glBindTexture(GL_TEXTURE_2D, *texture);
-		gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	}
-
 	GLTexture* CreateTexture2D(unsigned int width, unsigned int height)
 	{
 		GLuint texture;
@@ -262,10 +263,6 @@ public:
 		{
 			gl::glBindFramebuffer(GL_FRAMEBUFFER, rt->mFrameBuffer);
 		}
-	}
-
-	void SetDefaultRenderTarget(GLRenderTarget* rt)
-	{
 	}
 
 	void UploadTextureData(GLTexture* glTexture, void* data)

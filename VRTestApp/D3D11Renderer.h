@@ -139,6 +139,46 @@ protected:
 		return (actualRenderTarget == nullptr) ? &rtv : &actualRenderTarget->mRenderTargetView;
 	}
 
+	void _CreateTexture2D(unsigned int width, unsigned int height, unsigned int extra_bind_flags, void* _data, ID3D11Texture2D** texture, ID3D11ShaderResourceView** srv)
+	{
+		D3D11_TEXTURE2D_DESC desc;
+		desc.Width = width;
+		desc.Height = height;
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.SampleDesc.Count = 1;
+		desc.SampleDesc.Quality = 0;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | extra_bind_flags;
+		desc.CPUAccessFlags = 0;
+		desc.MiscFlags = 0;
+
+		HRESULT hr;
+		if (_data != nullptr)
+		{
+			D3D11_SUBRESOURCE_DATA srdata;
+			srdata.pSysMem = _data;
+			srdata.SysMemPitch = width * 4;
+			srdata.SysMemSlicePitch = 0;
+			hr = dev->CreateTexture2D(&desc, &srdata, texture);
+		}
+		else
+		{
+			hr = dev->CreateTexture2D(&desc, nullptr, texture);
+		}
+
+		//Shader Resource View
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+		ZeroMemory(&srvDesc, sizeof(srvDesc));
+		srvDesc.Format = desc.Format;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.MipLevels = desc.MipLevels;
+
+		hr = dev->CreateShaderResourceView(*texture, &srvDesc, srv);
+	}
+
 public:
 	D3DRenderer() : swapchain(nullptr), dev(nullptr), devcon(nullptr), rtv(nullptr)
 	{
@@ -239,46 +279,6 @@ public:
 	void UnbindModels()
 	{
 		actualModel = nullptr;
-	}
-
-	void _CreateTexture2D(unsigned int width, unsigned int height, unsigned int extra_bind_flags, void* _data, ID3D11Texture2D** texture, ID3D11ShaderResourceView** srv)
-	{
-		D3D11_TEXTURE2D_DESC desc;
-		desc.Width = width;
-		desc.Height = height;
-		desc.MipLevels = 1;
-		desc.ArraySize = 1;
-		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
-		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | extra_bind_flags;
-		desc.CPUAccessFlags = 0;
-		desc.MiscFlags = 0;
-
-		HRESULT hr;
-		if (_data != nullptr)
-		{
-			D3D11_SUBRESOURCE_DATA srdata;
-			srdata.pSysMem = _data;
-			srdata.SysMemPitch = width * 4;
-			srdata.SysMemSlicePitch = 0;
-			hr = dev->CreateTexture2D(&desc, &srdata, texture);
-		}
-		else
-		{
-			hr = dev->CreateTexture2D(&desc, nullptr, texture);
-		}
-
-		//Shader Resource View
-		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-		ZeroMemory(&srvDesc, sizeof(srvDesc));
-		srvDesc.Format = desc.Format;
-		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MostDetailedMip = 0;
-		srvDesc.Texture2D.MipLevels = desc.MipLevels;
-
-		hr = dev->CreateShaderResourceView(*texture, &srvDesc, srv);
 	}
 
 	D3DTexture* CreateTexture2D(unsigned int width, unsigned int height)
@@ -433,10 +433,13 @@ private:
 		delete inputElemDesc;
 	}
 
-	void DX_SetSwapChain(IDXGISwapChain* _swapChain)  { swapchain = _swapChain; }
-	void DX_SetDevice(ID3D11Device* _device)  { dev = _device; }
-	void DX_SetDeviceContext(ID3D11DeviceContext* _devicecontext)  { devcon = _devicecontext; }
-	void DX_SetRenderTargetView(ID3D11RenderTargetView* _rtv) { rtv = _rtv;  }
+	void DX_Defaults(IDXGISwapChain* _swapChain, ID3D11Device* _device, ID3D11DeviceContext* _devicecontext, ID3D11RenderTargetView* _rtv)
+	{
+		swapchain = _swapChain;
+		dev = _device;
+		devcon = _devicecontext;
+		rtv = _rtv;
+	}
 
 	float* GetClearColor()
 	{
