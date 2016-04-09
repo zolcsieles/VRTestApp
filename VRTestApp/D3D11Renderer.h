@@ -413,9 +413,57 @@ public:
 	}
 
 	//for D3DRenderer
-private:
-	friend class DXAPP;
+	void DX_Defaults(IDXGISwapChain* _swapChain, ID3D11Device* _device, ID3D11DeviceContext* _devicecontext, ID3D11RenderTargetView* _rtv)
+	{
+		swapchain = _swapChain;
+		dev = _device;
+		devcon = _devicecontext;
+		rtv = _rtv;
+	}
 
+	void Init(Window* wnd)
+	{
+		SDL_SysWMinfo wmInfo;
+		SDL_VERSION(&wmInfo.version);
+		SDL_GetWindowWMInfo(wnd->window, &wmInfo);
+
+		HWND hWnd = wmInfo.info.win.window;
+		DXGI_SWAP_CHAIN_DESC sd;
+		ZeroMemory(&sd, sizeof(sd));
+
+		sd.BufferCount = 1;
+		sd.BufferDesc.Width = wnd->Width;
+		sd.BufferDesc.Height = wnd->Height;
+		sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		sd.BufferDesc.RefreshRate.Numerator = 60; //0, ha no vsync
+		sd.BufferDesc.RefreshRate.Denominator = 1;
+		sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		sd.OutputWindow = hWnd;
+		sd.SampleDesc.Count = 1;
+		sd.SampleDesc.Quality = 0;
+		sd.Windowed = TRUE;
+
+		D3D_FEATURE_LEVEL FeatureLevels = D3D_FEATURE_LEVEL_11_0;
+		D3D_FEATURE_LEVEL FeatureLevel;
+
+		HRESULT hr = S_OK;
+		hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &FeatureLevels, 1, D3D11_SDK_VERSION, &sd, &swapchain, &dev, &FeatureLevel, &devcon);
+
+		////Create Back buffer
+
+		//Get a pointer to the back buffer
+		ID3D11Texture2D* pBackBuffer;
+		hr = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+
+		//Create a render-target view
+		dev->CreateRenderTargetView(pBackBuffer, NULL, &rtv);
+		pBackBuffer->Release();
+
+		//Bind the view
+		SetRenderTarget(nullptr);
+	}
+
+private:
 	void AttachLayoutToProgram(Layout* layout, D3DShaderProgram* prog)
 	{
 		AttachLayoutToVertexShader(layout, prog->GetVS());
@@ -431,14 +479,6 @@ private:
 		dev->CreateInputLayout(inputElemDesc, elemCount, vs->GetBlob()->GetBufferPointer(), vs->GetBlob()->GetBufferSize(), &ilay);
 		devcon->IASetInputLayout(ilay);
 		delete inputElemDesc;
-	}
-
-	void DX_Defaults(IDXGISwapChain* _swapChain, ID3D11Device* _device, ID3D11DeviceContext* _devicecontext, ID3D11RenderTargetView* _rtv)
-	{
-		swapchain = _swapChain;
-		dev = _device;
-		devcon = _devicecontext;
-		rtv = _rtv;
 	}
 
 	float* GetClearColor()

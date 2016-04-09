@@ -14,6 +14,9 @@
 
 struct Window
 {
+	unsigned int Width;
+	unsigned int Height;
+
 	Window() : window(nullptr), renderer(nullptr)
 	{
 	}

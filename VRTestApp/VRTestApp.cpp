@@ -279,7 +279,15 @@ protected:
 	PMyRenderTarget renderTarget;
 
 public:
-	virtual void Init(Window* wnd) = 0;
+	SDLAppWindow()
+	{
+		ir = new MyRenderer();
+	}
+
+	void Init(Window* wnd)
+	{
+		ir->Init(wnd);
+	}
 
 	void PreRender()
 	{
@@ -312,11 +320,6 @@ public:
 	{
 		renderTarget = ir->CreateRenderTarget2D(dispWidth >> 1, dispHeight >> 1);
 	};
-
-	SDLAppWindow()
-	{
-		ir = new MyRenderer();
-	}
 
 	void DoFuck()
 	{
@@ -400,106 +403,14 @@ public:
 };
 
 #if defined(USE_GX_OPENGL)
-/************************************************************************/
-/*   OOO  PPPP  EEEEE N   N      GGGG L                                 */
-/*  O   O P   P E     NN  N     G     L                                 */
-/*  O   O PPPP  EEEE  N N N     G GGG L                                 */
-/*  O   O P     E     N  NN     G   G L                                 */
-/*   OOO  P     EEEEE N   N      GGG  LLLLL                             */
-/************************************************************************/
-class GLAPP : public SDLAppWindow<OGL>
-{
-public:
-	void Init(Window* wnd)
-	{
-		if (!SDL_GL_CreateContext(wnd->window))
-		{
-			ErrorExit("Unable to create GL Context.");
-		}
-
-		initGL();
-
-		Info("Vendor: %s\n", gl::glGetString(GL_VENDOR));
-		Info("Renderer: %s\n", gl::glGetString(GL_RENDERER));
-		Info("Version: %s\n", gl::glGetString(GL_VERSION));
-		Info("GL Shading Language Version: %s\n", gl::glGetString(GL_SHADING_LANGUAGE_VERSION));
-		//Info("GL Extensions: %s\n", gl::glGetString(GL_EXTENSIONS));
-
-		gl::glEnable(GL_DEPTH_TEST);
-		gl::glFrontFace(GL_CW);
-		gl::glCullFace(GL_BACK);
-		gl::glEnable(GL_CULL_FACE);
-	}
-} glAppWindow;
+SDLAppWindow<OGL> glAppWindow;
 #endif
 #if defined(USE_GX_D3D11)
-/************************************************************************/
-/*  DDDD  I RRRR  EEEEE  CCCC TTTTT     X   X                           */
-/*  D   D I R   R E     C       T        X X                            */
-/*  D   D I RRRR  EEEE  C       T         X                             */
-/*  D   D I R  R  E     C       T        X X                            */
-/*  DDDD  I R   R EEEEE  CCCC   T       X   X                           */
-/************************************************************************/
-class DXAPP : public SDLAppWindow<D3D>
-{
-public:
-	void Init(Window* wnd)
-	{
-		SDL_SysWMinfo wmInfo;
-		SDL_VERSION(&wmInfo.version);
-		SDL_GetWindowWMInfo(wnd->window, &wmInfo);
-
-		HWND hWnd = wmInfo.info.win.window;
-		DXGI_SWAP_CHAIN_DESC sd;
-		ZeroMemory(&sd, sizeof(sd));
-
-		sd.BufferCount = 1;
-		sd.BufferDesc.Width = dispWidth;
-		sd.BufferDesc.Height = dispHeight;
-		sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		sd.BufferDesc.RefreshRate.Numerator = 60; //0, ha no vsync
-		sd.BufferDesc.RefreshRate.Denominator = 1;
-		sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		sd.OutputWindow = hWnd;
-		sd.SampleDesc.Count = 1;
-		sd.SampleDesc.Quality = 0;
-		sd.Windowed = TRUE;
-
-		D3D_FEATURE_LEVEL FeatureLevels = D3D_FEATURE_LEVEL_11_0;
-		D3D_FEATURE_LEVEL FeatureLevel;
-
-		HRESULT hr = S_OK;
-		IDXGISwapChain* _swapchain;
-		ID3D11Device* _dev;
-		ID3D11DeviceContext* _devcon;
-		ID3D11RenderTargetView* _rtv;
-
-		hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &FeatureLevels, 1, D3D11_SDK_VERSION, &sd, &_swapchain, &_dev, &FeatureLevel, &_devcon);
-
-		////Create Back buffer
-
-		//Get a pointer to the back buffer
-		ID3D11Texture2D* pBackBuffer;
-		hr = _swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
-
-		//Create a render-target view
-		_dev->CreateRenderTargetView(pBackBuffer, NULL, &_rtv);
-		pBackBuffer->Release();
-
-		//Set directx device
-		ir->DX_Defaults(_swapchain, _dev, _devcon, _rtv);
-
-		//Bind the view
-		ir->SetRenderTarget(nullptr);
-	}
-} d3dAppWindow;
+SDLAppWindow<D3D> d3dAppWindow;
 #endif
 
 //----------------------------------------------
-//----------------------------------------------
 
-//----------------------------------------------
-//----------------------------------------------
 void MyExit()
 {
 	shutdownGX();

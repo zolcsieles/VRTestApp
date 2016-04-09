@@ -333,6 +333,26 @@ public:
 		return model;
 	}
 
+	void Init(Window* wnd)
+	{
+		if (!SDL_GL_CreateContext(wnd->window))
+		{
+			ErrorExit("Unable to create GL Context.");
+		}
+		initGL();
+
+		Info("Vendor: %s\n", gl::glGetString(GL_VENDOR));
+		Info("Renderer: %s\n", gl::glGetString(GL_RENDERER));
+		Info("Version: %s\n", gl::glGetString(GL_VERSION));
+		Info("GL Shading Language Version: %s\n", gl::glGetString(GL_SHADING_LANGUAGE_VERSION));
+		//Info("GL Extensions: %s\n", gl::glGetString(GL_EXTENSIONS));
+
+		gl::glEnable(GL_DEPTH_TEST);
+		gl::glFrontFace(GL_CW);
+		gl::glCullFace(GL_BACK);
+		gl::glEnable(GL_CULL_FACE);
+	}
+
 private:
 	void AttachLayoutToProgram(Layout* layout, GLShaderProgram* prog)
 	{
