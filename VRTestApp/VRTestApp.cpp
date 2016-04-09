@@ -204,10 +204,10 @@ class TGAFile
 		switch (renderer)
 		{
 		case D3D:
-			RotateColorOnly();
+			RotateColorAndFlip();
 			break;
 		case OGL:
-			RotateColorAndFlip();
+			RotateColorOnly();
 			break;
 		}
 	}
@@ -469,20 +469,32 @@ public:
 		D3D_FEATURE_LEVEL FeatureLevel;
 
 		HRESULT hr = S_OK;
-		hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &FeatureLevels, 1, D3D11_SDK_VERSION, &sd, ir->GetSwapChainPtrPtr(), ir->GetDevicePtrPtr(), &FeatureLevel, ir->GetDeviceContextPtrPtr());
+		IDXGISwapChain* _swapchain;
+		ID3D11Device* _dev;
+		ID3D11DeviceContext* _devcon;
+		ID3D11RenderTargetView* _rtv;
+
+		hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &FeatureLevels, 1, D3D11_SDK_VERSION, &sd, &_swapchain, &_dev, &FeatureLevel, &_devcon);
 
 		////Create Back buffer
 
 		//Get a pointer to the back buffer
 		ID3D11Texture2D* pBackBuffer;
-		hr = ir->GetSwapChainPtr()->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+		hr = _swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
 
 		//Create a render-target view
-		d3dAppWindow.ir->GetDevicePtr()->CreateRenderTargetView(pBackBuffer, NULL, ir->GetRenderTargetViewPtrPtr());
+		_dev->CreateRenderTargetView(pBackBuffer, NULL, &_rtv);
 		pBackBuffer->Release();
 
+		//Set directx device
+		ir->DX_SetSwapChain(_swapchain);
+		ir->DX_SetDevice(_dev);
+		ir->DX_SetDeviceContext(_devcon);
+		ir->DX_SetRenderTargetView(_rtv);
+
+
 		//Bind the view
-		ir->GetDeviceContextPtr()->OMSetRenderTargets(1, ir->GetRenderTargetViewPtrPtr(), NULL);
+		ir->SetRenderTarget(nullptr);
 	}
 } d3dAppWindow;
 #endif

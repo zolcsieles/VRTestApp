@@ -134,6 +134,11 @@ protected:
 		}
 	}
 
+	inline ID3D11RenderTargetView** _GetActualRenderTargetView()
+	{
+		return (actualRenderTarget == nullptr) ? &rtv : &actualRenderTarget->mRenderTargetView;
+	}
+
 public:
 	D3DRenderer() : swapchain(nullptr), dev(nullptr), devcon(nullptr), rtv(nullptr)
 	{
@@ -315,14 +320,6 @@ public:
 		return new D3DRenderTarget(texture, srv, nullptr, rtv, width * 4);
 	}
 
-	ID3D11RenderTargetView** _GetActualRenderTargetView()
-	{
-		if (actualRenderTarget == nullptr)
-			return GetRenderTargetViewPtrPtr();
-		else
-			return &actualRenderTarget->mRenderTargetView;
-	}
-
 	void SetRenderTarget(D3DRenderTarget* rt)
 	{
 		actualRenderTarget = rt;
@@ -431,22 +428,15 @@ private:
 		D3D11_INPUT_ELEMENT_DESC* inputElemDesc = new D3D11_INPUT_ELEMENT_DESC[elemCount];
 		for (int i = 0; i < elemCount; ++i)
 			layout->GetElem(i)->SetInputElementDesc(&inputElemDesc[i]);
-		GetDevicePtr()->CreateInputLayout(inputElemDesc, elemCount, vs->GetBlob()->GetBufferPointer(), vs->GetBlob()->GetBufferSize(), &ilay);
-		GetDeviceContextPtr()->IASetInputLayout(ilay);
+		dev->CreateInputLayout(inputElemDesc, elemCount, vs->GetBlob()->GetBufferPointer(), vs->GetBlob()->GetBufferSize(), &ilay);
+		devcon->IASetInputLayout(ilay);
 		delete inputElemDesc;
 	}
 
-	IDXGISwapChain* GetSwapChainPtr() { return swapchain; }
-	IDXGISwapChain** GetSwapChainPtrPtr() { return &swapchain; }
-
-	ID3D11Device* GetDevicePtr() { return dev; }
-	ID3D11Device** GetDevicePtrPtr() { return &dev; }
-
-	ID3D11DeviceContext* GetDeviceContextPtr() { return devcon; }
-	ID3D11DeviceContext** GetDeviceContextPtrPtr() { return &devcon; }
-
-	ID3D11RenderTargetView* GetRenderTargetViewPtr() { return rtv; }
-	ID3D11RenderTargetView** GetRenderTargetViewPtrPtr() { return &rtv; }
+	void DX_SetSwapChain(IDXGISwapChain* _swapChain)  { swapchain = _swapChain; }
+	void DX_SetDevice(ID3D11Device* _device)  { dev = _device; }
+	void DX_SetDeviceContext(ID3D11DeviceContext* _devicecontext)  { devcon = _devicecontext; }
+	void DX_SetRenderTargetView(ID3D11RenderTargetView* _rtv) { rtv = _rtv;  }
 
 	float* GetClearColor()
 	{
