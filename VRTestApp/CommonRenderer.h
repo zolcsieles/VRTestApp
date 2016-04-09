@@ -7,6 +7,11 @@ enum BufferMask {
 	DEPTH_BUFFER = 2,
 };
 
+enum RENDERER {
+	D3D,
+	OGL
+};
+
 class Layout;
 
 template<typename T, typename TBlob>
@@ -349,19 +354,6 @@ template<> const GLenum PrimitiveTopology<PT_TRIANGLE_LIST>::GLTopology = GL_TRI
 template<> const GLenum PrimitiveTopology<PT_TRIANGLE_STRIP>::GLTopology = GL_TRIANGLE_STRIP;
 
 
-#if defined(USE_GX_OPENGL)
-#include "GLRenderer.h"
-#define GL(x) x
-#else
-#define GL(x) 
-#endif
-#if defined (USE_GX_D3D11)
-#include "D3D11Renderer.h"
-#define DX(x) x
-#else
-#define DX(x)
-#endif
-
 template<typename T>
 struct FormatDesc : public FormatDescBase
 {
@@ -372,9 +364,13 @@ public:
 	}
 };
 
+template<RENDERER xRenderer>
+struct MyTypes {};
 
-/*
-	TODO:
-	- Textures
-	- RenderTarget
-*/
+
+#if defined(USE_GX_OPENGL)
+#include "GLRenderer.h"
+#endif
+#if defined (USE_GX_D3D11)
+#include "D3D11Renderer.h"
+#endif

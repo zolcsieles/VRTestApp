@@ -35,49 +35,6 @@
 
 #include "CommonRenderer.h"
 
-enum RENDERER {
-	D3D,
-	OGL
-};
-template<RENDERER xRenderer>
-struct MyTypes
-{
-};
-
-#if defined(USE_GX_D3D11)
-template<>
-struct MyTypes<D3D>
-{
-	typedef D3DRenderer Renderer;
-	typedef D3DVertexShader VertexShader;
-	typedef D3DPixelShader PixelShader;
-	typedef D3DShaderProgram ShaderProgram;
-	typedef D3DModel Model;
-	typedef D3DBuffer VertexBuffer;
-	typedef D3DBuffer IndexBuffer;
-	typedef D3DBuffer ConstantBuffer;
-	typedef D3DTexture Texture2D;
-	typedef D3DRenderTarget RenderTarget;
-};
-#endif
-
-#if defined(USE_GX_OPENGL)
-template<>
-struct MyTypes<OGL>
-{
-	typedef GLRenderer Renderer;
-	typedef GLVertexShader VertexShader;
-	typedef GLFragmentShader PixelShader;
-	typedef GLShaderProgram ShaderProgram;
-	typedef GLModel Model;
-	typedef GLBuffer VertexBuffer;
-	typedef GLBuffer IndexBuffer;
-	typedef GLBuffer ConstantBuffer;
-	typedef GLTexture Texture2D;
-	typedef GLRenderTarget RenderTarget;
-};
-#endif
-
 bool runing = true;
 int dispWidth = 640;
 int dispHeight = 480;
@@ -249,39 +206,39 @@ template<RENDERER xRenderer>
 class SDLAppWindow
 {
 protected:
-	typedef typename MyTypes<xRenderer>::Renderer MyRenderer,*PMyRenderer;
-	typedef typename MyTypes<xRenderer>::VertexShader MyVertexShader,*PMyVertexShader;
-	typedef typename MyTypes<xRenderer>::PixelShader MyPixelShader,*PMyPixelShader;
-	typedef typename MyTypes<xRenderer>::ShaderProgram MyShaderProgram,*PMyShaderProgram;
-	typedef typename MyTypes<xRenderer>::Model MyModel,*PMyModel;
-	typedef typename MyTypes<xRenderer>::VertexBuffer MyVertexBuffer,*PMyVertexBuffer;
-	typedef typename MyTypes<xRenderer>::IndexBuffer MyIndexBuffer,*PMyIndexBuffer;
-	typedef typename MyTypes<xRenderer>::ConstantBuffer MyConstantBuffer,*PMyConstantBuffer;
-	typedef typename MyTypes<xRenderer>::Texture2D MyTexture2D,*PMyTexture2D;
-	typedef typename MyTypes<xRenderer>::RenderTarget MyRenderTarget, *PMyRenderTarget;
+	typedef typename MyTypes<xRenderer>::Renderer Renderer,*PRenderer;
+	typedef typename MyTypes<xRenderer>::VertexShader VertexShader,*PVertexShader;
+	typedef typename MyTypes<xRenderer>::PixelShader PixelShader,*PPixelShader;
+	typedef typename MyTypes<xRenderer>::ShaderProgram ShaderProgram,*PShaderProgram;
+	typedef typename MyTypes<xRenderer>::Model Model,*PModel;
+	typedef typename MyTypes<xRenderer>::VertexBuffer VertexBuffer,*PVertexBuffer;
+	typedef typename MyTypes<xRenderer>::IndexBuffer IndexBuffer,*PIndexBuffer;
+	typedef typename MyTypes<xRenderer>::ConstantBuffer ConstantBuffer,*PConstantBuffer;
+	typedef typename MyTypes<xRenderer>::Texture2D Texture2D,*PTexture2D;
+	typedef typename MyTypes<xRenderer>::RenderTarget RenderTarget, *PRenderTarget;
 
 protected:
-	PMyRenderer ir;
+	PRenderer ir;
 
-	PMyVertexShader vs;
-	PMyPixelShader fs;
-	PMyShaderProgram simple;
-	PMyModel quad;
+	PVertexShader vs;
+	PPixelShader fs;
+	PShaderProgram simple;
+	PModel quad;
 
-	PMyVertexBuffer vertBuffer, colorBuffer;
-	PMyIndexBuffer indexBuffer;
-	PMyConstantBuffer constantBuffer;
+	PVertexBuffer vertBuffer, colorBuffer;
+	PIndexBuffer indexBuffer;
+	PConstantBuffer constantBuffer;
 
 
 	VS_Constant xconstantBuffer;
 	TGAFile tga;
-	PMyTexture2D texture;
-	PMyRenderTarget renderTarget;
+	PTexture2D texture;
+	PRenderTarget renderTarget;
 
 public:
 	SDLAppWindow()
 	{
-		ir = new MyRenderer();
+		ir = new Renderer();
 	}
 
 	void Init(Window* wnd)
@@ -336,7 +293,7 @@ public:
 
 	void monoRenderFrame()
 	{
-		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER); //Moved here to see debug in fos.
+		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
 
 		PreRender();
 		Render();

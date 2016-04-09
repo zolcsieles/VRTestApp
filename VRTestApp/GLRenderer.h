@@ -366,3 +366,18 @@ private:
 
 	}
 };
+
+template<>
+struct MyTypes<OGL>
+{
+	typedef GLRenderer Renderer;
+	typedef GLVertexShader VertexShader;
+	typedef GLFragmentShader PixelShader;
+	typedef GLShaderProgram ShaderProgram;
+	typedef GLModel Model;
+	typedef GLBuffer VertexBuffer;
+	typedef GLBuffer IndexBuffer;
+	typedef GLBuffer ConstantBuffer;
+	typedef GLTexture Texture2D;
+	typedef GLRenderTarget RenderTarget;
+};

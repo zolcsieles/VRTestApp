@@ -486,3 +486,18 @@ private:
 		return mClearColor;
 	}
 };
+
+template<>
+struct MyTypes<D3D>
+{
+	typedef D3DRenderer Renderer;
+	typedef D3DVertexShader VertexShader;
+	typedef D3DPixelShader PixelShader;
+	typedef D3DShaderProgram ShaderProgram;
+	typedef D3DModel Model;
+	typedef D3DBuffer VertexBuffer;
+	typedef D3DBuffer IndexBuffer;
+	typedef D3DBuffer ConstantBuffer;
+	typedef D3DTexture Texture2D;
+	typedef D3DRenderTarget RenderTarget;
+};
