@@ -38,6 +38,18 @@ public:
 	{}
 };
 
+struct GLRenderTarget : public GLTexture
+{
+	GLuint mFrameBuffer;
+	GLuint mRenderBuffer;
+
+	GLRenderTarget(GLuint _texture, GLuint _frameBuffer, GLuint _renderBuffer, unsigned int _width, unsigned int _height) 
+		: GLTexture(_texture, _width, _height)
+		, mFrameBuffer(_frameBuffer)
+		, mRenderBuffer(_renderBuffer)
+	{}
+};
+
 class GLModel : public IModel<GLBuffer>
 {
 	friend class GLRenderer;
@@ -71,6 +83,7 @@ class GLRenderer
 {
 private:
 	GLModel* actualModel;
+	GLRenderTarget* actualRenderTarget;
 
 public:
 	void SetClearColor(float r, float g, float b, float a)
@@ -91,6 +104,7 @@ public:
 	void SetViewport(int x, int y, int width, int height)
 	{
 		gl::glViewport(x, y, width, height);
+		//gl::glDepthRange();
 	}
 
 	void SwapBuffers()
@@ -189,15 +203,69 @@ public:
 		actualModel = nullptr;
 	}
 
+	void _CreateTexture2D(unsigned int width, unsigned int height, void* data, GLuint* texture)
+	{
+		gl::glGenTextures(1, texture);
+		gl::glBindTexture(GL_TEXTURE_2D, *texture);
+		gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
+
 	GLTexture* CreateTexture2D(unsigned int width, unsigned int height)
 	{
 		GLuint texture;
-		gl::glGenTextures(1, &texture);
-		gl::glBindTexture(GL_TEXTURE_2D, texture);
-		gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		_CreateTexture2D(width, height, nullptr, &texture);
 		return new GLTexture(texture, width, height);
+	}
+
+	GLRenderTarget* CreateRenderTarget2D(unsigned int width, unsigned int height)
+	{
+		GLuint texture;
+		GLuint frameBuffer;
+		GLuint renderBuffer;
+
+		//InitFramebuffer
+		gl::glGenFramebuffers(1, &frameBuffer);
+		gl::glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
+
+		_CreateTexture2D(width, height, nullptr, &texture);
+
+		//Renderbuffer - Z buffer
+		gl::glGenRenderbuffers(1, &renderBuffer);
+		gl::glBindRenderbuffer(GL_RENDERBUFFER, renderBuffer);
+		gl::glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
+		gl::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, renderBuffer);
+		gl::glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture, 0);
+
+		//DrawBuffer
+		gl::glDrawBuffer(GL_COLOR_ATTACHMENT0); //glDrawBuffers helyette???
+
+		//
+		if (gl::glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+			ErrorExit("Unable to create framebuffer.");
+
+		//Set default render buffer
+		gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		return new GLRenderTarget(texture, frameBuffer, renderBuffer, width, height);
+	}
+
+	void SetRenderTarget(GLRenderTarget* rt)
+	{
+		actualRenderTarget = rt;
+		if (actualRenderTarget == nullptr)
+		{
+			gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+		else
+		{
+			gl::glBindFramebuffer(GL_FRAMEBUFFER, rt->mFrameBuffer);
+		}
+	}
+
+	void SetDefaultRenderTarget(GLRenderTarget* rt)
+	{
 	}
 
 	void UploadTextureData(GLTexture* glTexture, void* data)

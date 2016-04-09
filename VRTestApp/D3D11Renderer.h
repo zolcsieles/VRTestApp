@@ -18,9 +18,10 @@ struct D3DBuffer
 
 struct D3DTexture
 {
+public:
 	ID3D11Texture2D* mTexture;
 	ID3D11ShaderResourceView* mShaderResourceView;
-	ID3D11SamplerState* mSamplerState;
+	//ID3D11SamplerState* mSamplerState;
 
 	unsigned int mBytePerRow;
 
@@ -31,8 +32,23 @@ public:
 	D3DTexture(ID3D11Texture2D* _texture, ID3D11ShaderResourceView* _ShaderResourceView, ID3D11SamplerState* _SamplerState, unsigned int _bytePerRow) 
 		: mTexture(_texture)
 		, mShaderResourceView(_ShaderResourceView)
-		, mSamplerState(_SamplerState)
+		//, mSamplerState(_SamplerState)
 		, mBytePerRow(_bytePerRow)
+	{}
+};
+
+struct D3DRenderTarget : public D3DTexture
+{
+	ID3D11RenderTargetView* mRenderTargetView;
+	//ID3D11DepthStencilView* mDepthStencilView;
+
+	D3DRenderTarget() : D3DTexture()
+	{
+	}
+
+	D3DRenderTarget(ID3D11Texture2D* _texture, ID3D11ShaderResourceView* _ShaderResourceView, ID3D11SamplerState* _SamplerState, ID3D11RenderTargetView* _renderTargetView, unsigned int _bytePerRow)
+		: D3DTexture(_texture, _ShaderResourceView, _SamplerState, _bytePerRow)
+		, mRenderTargetView(_renderTargetView)
 	{}
 };
 
@@ -57,6 +73,7 @@ class D3DRenderer
 private:
 	float mClearColor[4];
 	D3DModel* actualModel;
+	D3DRenderTarget* actualRenderTarget;
 
 protected:
 	IDXGISwapChain* swapchain;
@@ -100,7 +117,7 @@ protected:
 		cbDesc.StructureByteStride = 0;
 
 		HRESULT hr = dev->CreateBuffer(&cbDesc, NULL, &temp);
-		
+
 		return temp;
 	}
 
@@ -129,10 +146,10 @@ public:
 		mClearColor[2] = b;
 		mClearColor[3] = a;
 	};
-	
+
 	void Clear(unsigned int bufferMask)
 	{
-		devcon->ClearRenderTargetView(rtv, mClearColor);
+		devcon->ClearRenderTargetView(*_GetActualRenderTargetView(), mClearColor);
 	}
 
 	void SetViewport(int x, int y, int width, int height)
@@ -219,7 +236,7 @@ public:
 		actualModel = nullptr;
 	}
 
-	D3DTexture* CreateTexture2D(unsigned int width, unsigned int height)
+	void _CreateTexture2D(unsigned int width, unsigned int height, unsigned int extra_bind_flags, void* _data, ID3D11Texture2D** texture, ID3D11ShaderResourceView** srv)
 	{
 		D3D11_TEXTURE2D_DESC desc;
 		desc.Width = width;
@@ -230,34 +247,43 @@ public:
 		desc.SampleDesc.Count = 1;
 		desc.SampleDesc.Quality = 0;
 		desc.Usage = D3D11_USAGE_DEFAULT;
-		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | extra_bind_flags;
 		desc.CPUAccessFlags = 0;
 		desc.MiscFlags = 0;
 
-		/*
-		Upload default:
-		D3D11_SUBRESOURCE_DATA srdata;
-		srdata.pSysMem = pointer;
-		srdata.SysMemPitch = width*Bpp;
-		srdata.SysMemSlicePitch = 0;
-		//srdata is the 2. parameter of CreateTexture2D
-		*/
+		HRESULT hr;
+		if (_data != nullptr)
+		{
+			D3D11_SUBRESOURCE_DATA srdata;
+			srdata.pSysMem = _data;
+			srdata.SysMemPitch = width * 4;
+			srdata.SysMemSlicePitch = 0;
+			hr = dev->CreateTexture2D(&desc, &srdata, texture);
+		}
+		else
+		{
+			hr = dev->CreateTexture2D(&desc, nullptr, texture);
+		}
 
-		ID3D11Texture2D* texture;
-		HRESULT hr = dev->CreateTexture2D(&desc, nullptr, &texture);
-
-		//=-=-=-=-
+		//Shader Resource View
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
 		ZeroMemory(&srvDesc, sizeof(srvDesc));
 		srvDesc.Format = desc.Format;
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MostDetailedMip = 0;
 		srvDesc.Texture2D.MipLevels = desc.MipLevels;
 
-		ID3D11ShaderResourceView* shaderResourceView;
-		hr = dev->CreateShaderResourceView(texture, &srvDesc, &shaderResourceView);
+		hr = dev->CreateShaderResourceView(*texture, &srvDesc, srv);
+	}
 
-		//=-=-=-=-
-		D3D11_SAMPLER_DESC sDesc;
+	D3DTexture* CreateTexture2D(unsigned int width, unsigned int height)
+	{
+		ID3D11Texture2D* texture;
+		ID3D11ShaderResourceView* srv;
+		_CreateTexture2D(width, height, 0, nullptr, &texture, &srv);
+
+		//=-=-=-=- Not req?
+		/*D3D11_SAMPLER_DESC sDesc;
 		ZeroMemory(&sDesc, sizeof(sDesc));
 		sDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 		sDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -268,9 +294,43 @@ public:
 		sDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
 		ID3D11SamplerState* samplerState;
-		hr = dev->CreateSamplerState(&sDesc, &samplerState);
+		hr = dev->CreateSamplerState(&sDesc, &samplerState);*/
 
-		return new D3DTexture(texture, shaderResourceView, samplerState, width * 4);
+		return new D3DTexture(texture, srv, /*samplerState*/nullptr, width * 4);
+	}
+
+	D3DRenderTarget* CreateRenderTarget2D(unsigned int width, unsigned int height)
+	{
+		ID3D11Texture2D* texture;
+		ID3D11ShaderResourceView* srv;
+		ID3D11RenderTargetView* rtv;
+		_CreateTexture2D(width, height, D3D11_BIND_RENDER_TARGET, nullptr, &texture, &srv);
+
+		D3D11_RENDER_TARGET_VIEW_DESC rtDesc;
+		rtDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		rtDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+		rtDesc.Texture2D.MipSlice = 0;
+		HRESULT hr = dev->CreateRenderTargetView(texture, &rtDesc, &rtv);
+
+		return new D3DRenderTarget(texture, srv, nullptr, rtv, width * 4);
+	}
+
+	ID3D11RenderTargetView** _GetActualRenderTargetView()
+	{
+		if (actualRenderTarget == nullptr)
+			return GetRenderTargetViewPtrPtr();
+		else
+			return &actualRenderTarget->mRenderTargetView;
+	}
+
+	void SetRenderTarget(D3DRenderTarget* rt)
+	{
+		actualRenderTarget = rt;
+		devcon->OMSetRenderTargets(1, _GetActualRenderTargetView(), NULL);
+	}
+
+	void SetDefaultRenderTarget(D3DRenderTarget* rt)
+	{
 	}
 
 	void UploadTextureData(D3DTexture* d3dTexture, void* data)
@@ -281,7 +341,7 @@ public:
 	void ActivateTexture(D3DTexture* d3dTexture)
 	{
 		devcon->PSSetShaderResources(0, 1, &d3dTexture->mShaderResourceView);
-		devcon->PSSetSamplers(0, 1, &d3dTexture->mSamplerState);
+		//devcon->PSSetSamplers(0, 1, &d3dTexture->mSamplerState);
 	}
 
 	D3DVertexShader* CreateVertexShaderFromSourceFile(const char* fName)

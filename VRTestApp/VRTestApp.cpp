@@ -57,6 +57,7 @@ struct MyTypes<D3D>
 	typedef D3DBuffer IndexBuffer;
 	typedef D3DBuffer ConstantBuffer;
 	typedef D3DTexture Texture2D;
+	typedef D3DRenderTarget RenderTarget;
 };
 #endif
 
@@ -73,6 +74,7 @@ struct MyTypes<OGL>
 	typedef GLBuffer IndexBuffer;
 	typedef GLBuffer ConstantBuffer;
 	typedef GLTexture Texture2D;
+	typedef GLRenderTarget RenderTarget;
 };
 #endif
 
@@ -256,6 +258,7 @@ protected:
 	typedef typename MyTypes<xRenderer>::IndexBuffer MyIndexBuffer,*PMyIndexBuffer;
 	typedef typename MyTypes<xRenderer>::ConstantBuffer MyConstantBuffer,*PMyConstantBuffer;
 	typedef typename MyTypes<xRenderer>::Texture2D MyTexture2D,*PMyTexture2D;
+	typedef typename MyTypes<xRenderer>::RenderTarget MyRenderTarget, *PMyRenderTarget;
 
 protected:
 	PMyRenderer ir;
@@ -273,12 +276,42 @@ protected:
 	VS_Constant xconstantBuffer;
 	TGAFile tga;
 	PMyTexture2D texture;
+	PMyRenderTarget renderTarget;
 
 public:
 	virtual void Init(Window* wnd) = 0;
 
-	virtual void PreRender() {}
-	virtual void InitRenderTarget() {};
+	void PreRender()
+	{
+		//Use Render Target
+		ir->SetRenderTarget(renderTarget);
+		ir->SetViewport(0, 0, dispWidth >> 1, dispHeight >> 1);
+
+		ir->SetClearColor(1.0, 0.0, 0.0, 0.5);
+		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
+
+		//Render
+		ir->ActivateProgram(simple);
+		ir->ActivateTexture(texture);
+		float y = (GetTickCount() % 10000) / 10000.0f;
+		SetUniforms(0.0f, y, 0.0f);
+
+		ir->BindModel(quad);
+		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+
+		ir->UnbindModels();
+		ir->DeactivatePrograms();
+
+		ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
+		//Set default render target:
+		ir->SetRenderTarget(nullptr);
+		ir->SetViewport(0, 0, dispWidth, dispHeight);
+	}
+	
+	void InitRenderTarget()
+	{
+		renderTarget = ir->CreateRenderTarget2D(dispWidth >> 1, dispHeight >> 1);
+	};
 
 	SDLAppWindow()
 	{
@@ -339,7 +372,8 @@ public:
 		SetUniforms(0.0f, y, 0.0f);
 		
 		ir->BindModel(quad);
-		UseTexture();
+		
+		ir->ActivateTexture(renderTarget);
 		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
 
 		ir->UnbindModels();
@@ -362,11 +396,6 @@ public:
 	{
 		texture = ir->CreateTexture2D(tga.GetWidth(), tga.GetHeight());
 		ir->UploadTextureData(texture, tga.GetPtr());
-	}
-
-	virtual void UseTexture()
-	{
-		ir->ActivateTexture(texture);
 	}
 };
 
@@ -401,10 +430,6 @@ public:
 		gl::glCullFace(GL_BACK);
 		gl::glEnable(GL_CULL_FACE);
 	}
-
-	void InitRenderTarget();
-	void PreRender();
-	void UseTexture();
 } glAppWindow;
 #endif
 #if defined(USE_GX_D3D11)
@@ -459,159 +484,11 @@ public:
 		//Bind the view
 		ir->GetDeviceContextPtr()->OMSetRenderTargets(1, ir->GetRenderTargetViewPtrPtr(), NULL);
 	}
-
-	void InitRenderTarget();
-	void PreRender();
-	void UseTexture();
 } d3dAppWindow;
 #endif
 
 //----------------------------------------------
 //----------------------------------------------
-
-GLuint frameBuffer;
-GLTexture* renderTarget;
-GLuint renderBuffer;
-void GLAPP::InitRenderTarget()
-{
-	//InitFramebuffer
-	gl::glGenFramebuffers(1, &frameBuffer);
-	gl::glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
-
-	//Texture
-	renderTarget = ir->CreateTexture2D(dispWidth >> 1, dispHeight >> 1);
-
-	//Renderbuffer - Z buffer
-	gl::glGenRenderbuffers(1, &renderBuffer);
-	gl::glBindRenderbuffer(GL_RENDERBUFFER, renderBuffer);
-	gl::glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, renderTarget->mWidth, renderTarget->mHeight);
-	gl::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, renderBuffer);
-	gl::glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->mTexture, 0);
-
-	//DrawBuffer
-	gl::glDrawBuffer(GL_COLOR_ATTACHMENT0); //glDrawBuffers helyette???
-
-	//
-	if (gl::glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-		ErrorExit("Basszad meg framebuffert.");
-
-
-	//Set default render buffer
-	gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-void GLAPP::UseTexture()
-{
-	ir->ActivateTexture(renderTarget);
-}
-
-void GLAPP::PreRender()
-{
-	//Use Render Target
-	gl::glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
-	ir->SetViewport(0, 0, dispWidth >> 1, dispHeight >> 1);
-
-	ir->SetClearColor(1.0, 0.0, 0.0, 0.5);
-	ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
-	
-	//Render
-	ir->ActivateProgram(simple);
-	ir->ActivateTexture(texture);
-	float y = (GetTickCount() % 10000) / 10000.0f;
-	SetUniforms(0.0f, y, 0.0f);
-
-	ir->BindModel(quad);
-	ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
-
-	ir->UnbindModels();
-	ir->DeactivatePrograms();
-
-
-	ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
-	//Set default render target:
-	gl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	ir->SetViewport(0, 0, dispWidth, dispHeight);
-
-}
-//----------------------------------------------
-// GLuint frameBuffer;
-// GLTexture* renderTarget;
-// GLuint renderBuffer;
-
-
-ID3D11Texture2D* drenderTarget;
-ID3D11RenderTargetView* drenderTargetView;
-ID3D11ShaderResourceView* dshaderResourceView;
-
-ID3D11DepthStencilView* ddepthStencilView;
-void DXAPP::InitRenderTarget()
-{
-	HRESULT hr;
-	D3D11_TEXTURE2D_DESC texDesc;
-	ZeroMemory(&texDesc, sizeof(texDesc));
-	texDesc.Width = dispWidth >> 1;
-	texDesc.Height = dispHeight >> 1;
-	texDesc.MipLevels = 1;
-	texDesc.ArraySize = 1;
-	texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	texDesc.SampleDesc.Count = 1;
-	texDesc.Usage = D3D11_USAGE_DEFAULT;
-	texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
-	texDesc.CPUAccessFlags = 0;
-	texDesc.MiscFlags = 0;
-	hr = ir->GetDevicePtr()->CreateTexture2D(&texDesc, nullptr, &drenderTarget);
-
-	D3D11_RENDER_TARGET_VIEW_DESC rtDesc;
-	rtDesc.Format = texDesc.Format;
-	rtDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-	rtDesc.Texture2D.MipSlice = 0;
-	hr = ir->GetDevicePtr()->CreateRenderTargetView(drenderTarget, &rtDesc, &drenderTargetView);
-
-
-	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-	srvDesc.Format = texDesc.Format;
-	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Texture2D.MipLevels = 1;
-	hr = ir->GetDevicePtr()->CreateShaderResourceView(drenderTarget, &srvDesc, &dshaderResourceView);
-}
-
-void DXAPP::UseTexture()
-{
-	//ir->ActivateTexture(drenderTarget);
-	ir->GetDeviceContextPtr()->PSSetShaderResources(0, 1, &dshaderResourceView);
-	//devcon->PSSetSamplers(0, 1, &d3dTexture->mSamplerState);
-}
-
-void DXAPP::PreRender()
-{
-	//Use Render Target
-//	gl::glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
-	ir->GetDeviceContextPtr()->OMSetRenderTargets(1, &drenderTargetView, NULL);
-	ir->SetViewport(0, 0, dispWidth >> 1, dispHeight >> 1);
-
-	ir->SetClearColor(1.0, 0.0, 0.0, 0.5);
-	//ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
-	ir->GetDeviceContextPtr()->ClearRenderTargetView(drenderTargetView, ir->GetClearColor());
-
-	//Render
-	ir->ActivateProgram(simple);
-	ir->ActivateTexture(texture);
-	float y = (GetTickCount() % 10000) / 10000.0f;
-	SetUniforms(0.0f, y, 0.0f);
-
-	ir->BindModel(quad);
-	ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
-
-	ir->UnbindModels();
-	ir->DeactivatePrograms();
-
-
-	ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
-	//Set default render target:
-	ir->GetDeviceContextPtr()->OMSetRenderTargets(1, ir->GetRenderTargetViewPtrPtr(), NULL);
-	ir->SetViewport(0, 0, dispWidth, dispHeight);
-}
 
 //----------------------------------------------
 //----------------------------------------------
