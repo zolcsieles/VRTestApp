@@ -345,6 +345,10 @@ public:
 		ir->UpdateConstantBuffer(constantBuffer, &cb);
 		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
 
+		cb.model.SetTranslate(0.0f, +1.0f, 0.0f);
+		ir->UpdateConstantBuffer(constantBuffer, &cb);
+		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+
 		ir->UnbindModels();
 		ir->DeactivatePrograms();
 	}
@@ -356,15 +360,15 @@ public:
 		float deg = 360.0f*t;
 		float rad = float(deg * M_PI / 180.0);
 
-		float dist = 1.5f;
-		float x = cos(rad)*dist;
-		float y = sin(rad)*dist;
+		float dist = 2.0f;
+		float x = cos(-rad)*dist;
+		float y = sin(-rad)*dist;
 
-		zls::math::vec3 eyePos(x, -0.0f, y), targetPos(0.0f, 0.0f, 0.0), upDir(0.0f, 1.0f, 0.0f);
+		zls::math::vec3 eyePos(x, 2.0f, y), targetPos(0.0f, 0.0f, 0.0), upDir(0.0f, 1.0f, 0.0f);
 		cb.view.SetViewLookatRH(eyePos, targetPos, upDir);
 		
 		//cb.model.SetTranslate(targetPos.x, targetPos.y, targetPos.z);
-		cb.model.SetRotateY(deg);
+		cb.model.SetRotateY_RH(deg);
 
 		ir->UpdateConstantBuffer(constantBuffer, &cb);
 		ir->ActualizeConstantBuffer(constantBuffer, simple, "BlockName");

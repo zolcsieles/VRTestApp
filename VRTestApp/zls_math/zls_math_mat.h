@@ -248,6 +248,20 @@ namespace zls
 				m[3][2] = (-2 * _far*_near) / fmn;
 			}
 
+			void _SymetricLH_DX(const T _near, const T _far)
+			{
+				const T fmn = _far - _near;
+				m[2][2] = _far / (_far - _near);
+				m[3][2] = (_far*_near) / (_near - _far);
+			}
+
+			void _SymetricLH_GL(const T _near, const T _far)
+			{
+				const T fmn = _far - _near;
+				m[2][2] = (_far + _near) / fmn;
+				m[3][2] = (-2 * _far*_near) / fmn;
+			}
+
 			template<unsigned int renderer>
 			void SetSymetricFrustumRH(const T _near, const T _far, const T _top, const T _right)
 			{
@@ -305,8 +319,144 @@ namespace zls
 				m[3][3] = zls::math::traits<T>::ZERO;
 			}
 
+			template<unsigned int renderer>
+			void SetSymetricFrustumLH(const T _near, const T _far, const T _top, const T _right)
+			{
+				m[0][0] = _near / _right;
+				m[1][0] = zls::math::traits<T>::ZERO;
+				m[2][0] = zls::math::traits<T>::ZERO;
+				m[3][0] = zls::math::traits<T>::ZERO;
 
-			void SetRotateX(T degree)
+				m[0][1] = zls::math::traits<T>::ZERO;
+				m[1][1] = _near / _top;
+				m[2][1] = zls::math::traits<T>::ZERO;
+				m[3][1] = zls::math::traits<T>::ZERO;
+
+				m[0][2] = zls::math::traits<T>::ZERO;
+				m[1][2] = zls::math::traits<T>::ZERO;
+
+				switch (renderer)
+				{
+				case 0: _SymetricLH_DX(_near, _far);  break;//D3D
+				case 1: _SymetricLH_GL(_near, _far); break;//OGL
+				}
+
+				m[0][3] = zls::math::traits<T>::ZERO;
+				m[1][3] = zls::math::traits<T>::ZERO;
+				m[2][3] = zls::math::traits<T>::ONE;
+				m[3][3] = zls::math::traits<T>::ZERO;
+			}
+
+			template<unsigned int renderer>
+			void SetSymetricPerspectiveLH(const T _near, const T _far, const T _fovY, const T _aspect)
+			{
+				const T halffovY = fovY / 2 * M_PI / 180.0;
+				m[0][0] = zls::math::traits<T>::ONE / tan(halffovY);
+				m[1][0] = zls::math::traits<T>::ZERO;
+				m[2][0] = zls::math::traits<T>::ZERO;
+				m[3][0] = zls::math::traits<T>::ZERO;
+
+				m[0][1] = zls::math::traits<T>::ZERO;
+				m[1][1] = m[0][0] * _aspect;
+				m[2][1] = zls::math::traits<T>::ZERO;
+				m[3][1] = zls::math::traits<T>::ZERO;
+
+				m[0][2] = zls::math::traits<T>::ZERO;
+				m[1][2] = zls::math::traits<T>::ZERO;
+
+				switch (renderer)
+				{
+				case 0: _SymetricLH_DX(_near, _far);  break;//D3D
+				case 1: _SymetricLH_GL(_near, _far); break;//OGL
+				}
+
+				m[0][3] = zls::math::traits<T>::ZERO;
+				m[1][3] = zls::math::traits<T>::ZERO;
+				m[2][3] = zls::math::traits<T>::ONE;
+				m[3][3] = zls::math::traits<T>::ZERO;
+			}
+
+			void SetRotateX_RH(T degree)
+			{
+				const T rad = T(degree * M_PI / 180.0);
+				m[0][0] = zls::math::traits<T>::ONE;
+				m[0][1] = zls::math::traits<T>::ZERO;
+				m[0][2] = zls::math::traits<T>::ZERO;
+				m[0][3] = zls::math::traits<T>::ZERO;
+
+				m[1][0] = zls::math::traits<T>::ZERO;
+				m[1][3] = zls::math::traits<T>::ZERO;
+
+				m[2][0] = zls::math::traits<T>::ZERO;
+				m[2][3] = zls::math::traits<T>::ZERO;
+
+				m[3][0] = zls::math::traits<T>::ZERO;
+				m[3][1] = zls::math::traits<T>::ZERO;
+				m[3][2] = zls::math::traits<T>::ZERO;
+				m[3][3] = zls::math::traits<T>::ONE;
+
+				m[1][1] = zls::math::cos(rad);
+				m[2][2] = -m[1][1];
+
+				m[1][2] = -zls::math::sin(rad);
+				m[2][1] = -m[1][2];
+			}
+
+			void SetRotateY_RH(T degree)
+			{
+				const T rad = T(degree * M_PI / 180.0);
+
+				m[0][1] = zls::math::traits<T>::ZERO;
+				m[0][3] = zls::math::traits<T>::ZERO;
+
+				m[1][0] = zls::math::traits<T>::ZERO;
+				m[1][1] = zls::math::traits<T>::ONE;
+				m[1][2] = zls::math::traits<T>::ZERO;
+				m[1][3] = zls::math::traits<T>::ZERO;
+
+				m[2][1] = zls::math::traits<T>::ZERO;
+				m[2][3] = zls::math::traits<T>::ZERO;
+
+				m[3][0] = zls::math::traits<T>::ZERO;
+				m[3][1] = zls::math::traits<T>::ZERO;
+				m[3][2] = zls::math::traits<T>::ZERO;
+				m[3][3] = zls::math::traits<T>::ONE;
+
+				m[0][0] = zls::math::cos(rad);
+				m[2][2] = m[0][0];
+
+				m[0][2] = zls::math::sin(rad);
+				m[2][0] = -m[0][2];
+			}
+
+			void SetRotateZ_RH(T degree)
+			{
+				const T rad = T(degree * M_PI / 180.0);
+
+				m[0][2] = zls::math::traits<T>::ZERO;
+				m[0][3] = zls::math::traits<T>::ZERO;
+
+				m[1][2] = zls::math::traits<T>::ZERO;
+				m[1][3] = zls::math::traits<T>::ZERO;
+
+				m[2][0] = zls::math::traits<T>::ZERO;
+				m[2][1] = zls::math::traits<T>::ZERO;
+				m[2][2] = zls::math::traits<T>::ONE;
+				m[2][3] = zls::math::traits<T>::ZERO;
+
+				m[3][0] = zls::math::traits<T>::ZERO;
+				m[3][1] = zls::math::traits<T>::ZERO;
+				m[3][2] = zls::math::traits<T>::ZERO;
+				m[3][3] = zls::math::traits<T>::ONE;
+
+				m[0][0] = zls::math::cos(rad);
+				m[1][1] = m[0][0];
+
+				m[0][1] = -zls::math::sin(rad);
+				m[1][0] = -m[0][1];
+			}
+
+			void SetRotateX_LH(T degree)
 			{
 				const T rad = T(degree * M_PI / 180.0);
 				m[0][0] = zls::math::traits<T>::ONE;
@@ -332,7 +482,7 @@ namespace zls
 				m[2][1] = -m[1][2];
 			}
 
-			void SetRotateY(T degree)
+			void SetRotateY_LH(T degree)
 			{
 				const T rad = T(degree * M_PI / 180.0);
 
@@ -359,7 +509,7 @@ namespace zls
 				m[2][0] = -m[0][2];
 			}
 
-			void SetRotateZ(T degree)
+			void SetRotateZ_LH(T degree)
 			{
 				const T rad = T(degree * M_PI / 180.0);
 
@@ -385,7 +535,6 @@ namespace zls
 				m[0][1] = zls::math::sin(rad);
 				m[1][0] = -m[0][1];
 			}
-
 
 			//
 
