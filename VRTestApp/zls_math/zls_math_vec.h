@@ -8,10 +8,10 @@ namespace zls {
 		{
 		private:
 			union {
-				T x; T r; T s;
+				T x;/* T r; T s;*/
 			};
 			union {
-				T y; T g; T t;
+				T y;/* T g; T t;*/
 			};
 		public:
 			Vec2() : x(zls::math::traits<T>::ZERO), y(zls::math::traits<T>::ZERO)
@@ -27,13 +27,13 @@ namespace zls {
 		{
 		public:
 			union {
-				T x; T r; T s;
+				T x;/* T r; T s;*/
 			};
 			union {
-				T y; T g; T t;
+				T y;/* T g; T t;*/
 			};
 			union {
-				T z; T b; T p;
+				T z;/* T b; T p;*/
 			};
 		public:
 			Vec3() : x(zls::math::traits<T>::ZERO), y(zls::math::traits<T>::ZERO), z(zls::math::traits<T>::ZERO)
@@ -42,6 +42,27 @@ namespace zls {
 			Vec3(const T _x, const T _y, const T _z) : x(_x), y(_y), z(_z)
 			{
 			}
+
+			Vec3 operator-(const Vec3& other) const
+			{
+				return Vec3(x-other.x, y-other.y, z-other.z);
+			}
+
+			T operator*(const Vec3& other) const
+			{
+				return (x*other.x + y*other.y + z*other.z);
+			}
+
+			Vec3 cross(const Vec3& other) const
+			{
+				return Vec3(y*other.z-z*other.y, z*other.x-x*other.z, x*other.y-y*other.x);
+			}
+
+			Vec3 normal()
+			{
+				T length = zls::math::sqrt( x*x + y*y + z*z );
+				return Vec3(x/length, y/length, z/length);
+			}
 		};
 
 		template<typename T>
@@ -49,16 +70,16 @@ namespace zls {
 		{
 		private:
 			union {
-				T x; T r; T s;
+				T x;/* T r; T s;*/
 			};
 			union {
-				T y; T g; T t;
+				T y;/* T g; T t;*/
 			};
 			union {
-				T z; T b; T p;
+				T z;/* T b; T p;*/
 			};
 			union {
-				T w; T a; T q;
+				T w;/* T a; T q;*/
 			};
 		public:
 			Vec4() : x(zls::math::traits<T>::ZERO), y(zls::math::traits<T>::ZERO), z(zls::math::traits<T>::ZERO), w(zls::math::traits<T>::ONE)

@@ -351,6 +351,7 @@ public:
 		gl::glFrontFace(GL_CW);
 		gl::glCullFace(GL_BACK);
 		gl::glEnable(GL_CULL_FACE);
+		//gl::glDisable(GL_CULL_FACE);
 	}
 
 private:

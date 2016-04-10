@@ -80,6 +80,9 @@ protected:
 	ID3D11Device* dev;
 	ID3D11DeviceContext* devcon;
 	ID3D11RenderTargetView* rtv;
+	ID3D11Texture2D* depthStencilBuffer;
+	ID3D11DepthStencilView* depthStencilView;
+	ID3D11DepthStencilState* depthStencilState;
 
 	ID3D11Buffer* _CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
 	{
@@ -194,7 +197,10 @@ public:
 
 	void Clear(unsigned int bufferMask)
 	{
+		if (bufferMask & COLOR_BUFFER)
 		devcon->ClearRenderTargetView(*_GetActualRenderTargetView(), mClearColor);
+		if (bufferMask & (DEPTH_BUFFER | STENCIL_BUFFER))
+			devcon->ClearDepthStencilView(depthStencilView, (bufferMask & DEPTH_BUFFER ? D3D11_CLEAR_DEPTH : 0) | (bufferMask & STENCIL_BUFFER ? D3D11_CLEAR_STENCIL : 0), 1.0f, 0);
 	}
 
 	void SetViewport(int x, int y, int width, int height)
@@ -205,7 +211,7 @@ public:
 		vp.Width = float(width);
 		vp.Height = float(height);
 		vp.MinDepth = 0.0f;
-		vp.MaxDepth = 0.0f;
+		vp.MaxDepth = 1.0f;
 		devcon->RSSetViewports(1, &vp);
 	}
 
@@ -323,7 +329,8 @@ public:
 	void SetRenderTarget(D3DRenderTarget* rt)
 	{
 		actualRenderTarget = rt;
-		devcon->OMSetRenderTargets(1, _GetActualRenderTargetView(), NULL);
+		devcon->OMSetRenderTargets(1, _GetActualRenderTargetView(), depthStencilView /*nullptr*/);
+		devcon->OMSetDepthStencilState(depthStencilState, 1);
 	}
 
 	void SetDefaultRenderTarget(D3DRenderTarget* rt)
@@ -458,6 +465,30 @@ public:
 		//Create a render-target view
 		dev->CreateRenderTargetView(pBackBuffer, NULL, &rtv);
 		pBackBuffer->Release();
+
+		//Create the depth buffer
+		D3D11_TEXTURE2D_DESC dsbDesc;
+		ZeroMemory(&dsbDesc, sizeof(dsbDesc));
+		dsbDesc.ArraySize = 1;
+		dsbDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		dsbDesc.CPUAccessFlags = 0;
+		dsbDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		dsbDesc.Width = wnd->Width;
+		dsbDesc.Height = wnd->Height;
+		dsbDesc.MipLevels = 1;
+		dsbDesc.SampleDesc.Count = 1;
+		dsbDesc.SampleDesc.Quality = 0;
+		dsbDesc.Usage = D3D11_USAGE_DEFAULT;
+		hr = dev->CreateTexture2D(&dsbDesc, nullptr, &depthStencilBuffer);
+
+		hr = dev->CreateDepthStencilView(depthStencilBuffer, nullptr, &depthStencilView);
+
+		//Depth State
+		D3D11_DEPTH_STENCIL_DESC dssDesc;
+		dssDesc.DepthEnable = TRUE;
+		dssDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		dssDesc.DepthFunc = D3D11_COMPARISON_LESS;
+		hr = dev->CreateDepthStencilState(&dssDesc, &depthStencilState);
 
 		//Bind the view
 		SetRenderTarget(nullptr);

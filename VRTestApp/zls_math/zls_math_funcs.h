@@ -15,5 +15,11 @@ namespace zls
 		{
 			return ::sin(_rad);
 		}
+
+		template<typename T>
+		T sqrt(const T _sq)
+		{
+			return ::sqrt(_sq);
+		}
 	}
 }

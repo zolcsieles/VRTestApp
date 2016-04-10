@@ -5,6 +5,7 @@
 enum BufferMask {
 	COLOR_BUFFER = 1,
 	DEPTH_BUFFER = 2,
+	STENCIL_BUFFER = 4,
 };
 
 enum RENDERER {

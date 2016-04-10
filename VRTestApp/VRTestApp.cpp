@@ -39,7 +39,6 @@ bool runing = true;
 int dispWidth = 640;
 int dispHeight = 480;
 
-FormatDesc<float> color2Descp(3, "color2", FDS_COLOR, 1, 1);
 FormatDesc<float> posDescp(3, "pos", FDS_POSITION, 0, 0);
 FormatDesc<float> colorDescp(3, "color", FDS_COLOR, 0, 0, posDescp.GetEndOffset());
 FormatDesc<float> texDescp(2, "tc", FDS_TEXCOORD, 0, 0, colorDescp.GetEndOffset());
@@ -51,28 +50,34 @@ struct Vert {
 	zls::math::vec3 v_col;
 	zls::math::vec2 v_tx;
 };
-const int nVertices = 4;
+const int nVertices = 8;
 Vert v_buffer[nVertices] =
 {
-	{ { -0.25f, 0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } }, //0
-	{ { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f } }, //1
-	{ { 0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f } }, //2
-	{ { 0.75f, 0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 1.0f, 0.0f } }, //3
+	{ { -0.5f, -0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 0.0f } }, //0
+	{ { +0.5f, -0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 1.0f, 0.0f } }, //1
+	{ { +0.5f, +0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 1.0f, 1.0f } }, //2
+	{ { -0.5f, +0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 1.0f } }, //3
+	{ { -0.5f, -0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 0.0f } }, //4
+	{ { +0.5f, -0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 1.0f, 0.0f } }, //5
+	{ { +0.5f, +0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 1.0f, 1.0f } }, //6
+	{ { -0.5f, +0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 1.0f } }, //7
 };
 
-zls::math::vec3 v_col2[] =
-{
-	{ 0.0f, 0.0f, 1.0f },
-	{ 0.0f, 0.0f, 1.0f },
-	{ 0.0f, 0.0f, 1.0f },
-	{ 0.0f, 0.0f, 1.0f }
-};
-
-const int nIndices = 6;
+const int nIndices = 6*2 * 3;
 unsigned int i_buffer[nIndices] =
 {
-	2, 0, 3,
-	0, 2, 1
+	2,0,1,
+	0,2,3,
+	5,4,6,
+	6,4,7,
+	6,1,5,
+	2,1,6,
+	7,0,3,
+	4,0,7,
+	6,7,2,
+	7,3,2,
+	4,1,0,
+	5,1,4,
 };
 
 const int SizeOfVertices = sizeof(Vert)*nVertices;
@@ -84,6 +89,8 @@ const int nFaces = 2;
 struct _declspec(align(8)) VS_Constant
 {
 	zls::math::mat4 proj;
+	zls::math::mat4 view;
+	zls::math::mat4 model;
 	zls::math::vec3 shift;
 };
 
@@ -230,7 +237,7 @@ protected:
 	PConstantBuffer constantBuffer;
 
 
-	VS_Constant xconstantBuffer;
+	VS_Constant cb;
 	TGAFile tga;
 	PTexture2D texture;
 	PRenderTarget renderTarget;
@@ -258,8 +265,8 @@ public:
 		//Render
 		ir->ActivateProgram(simple);
 		ir->ActivateTexture(texture);
-		float y = (GetTickCount() % 10000) / 10000.0f;
-		SetUniforms(0.0f, y, 0.0f);
+		float t = (GetTickCount() % 10000) / 10000.0f;
+		SetUniforms(t);
 
 		ir->BindModel(quad);
 		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
@@ -295,7 +302,7 @@ public:
 	{
 		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
 
-		PreRender();
+		//PreRender();
 		Render();
 
 		ir->SwapBuffers();
@@ -320,35 +327,46 @@ public:
 		//INDEX
 		indexBuffer = ir->CreateIndexBuffer(nIndices, i_buffer);
 
-		//COLOR
-		colorBuffer = ir->CreateVertexBuffer(1, nVertices, v_col2);
 		ir->UnbindModels();
 	}
 
 	void Render()
 	{
 		ir->ActivateProgram(simple);
-		float y = (GetTickCount() % 10000) / 10000.0f;
-		SetUniforms(0.0f, y, 0.0f);
+		float t = (GetTickCount() % 10000) / 10000.0f;
+		SetUniforms(t);
 		
 		ir->BindModel(quad);
 		
-		ir->ActivateTexture(renderTarget);
+		ir->ActivateTexture(texture);
+		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+
+		cb.model.SetTranslate(0.0f, -1.0f, 0.0f);
+		ir->UpdateConstantBuffer(constantBuffer, &cb);
 		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
 
 		ir->UnbindModels();
 		ir->DeactivatePrograms();
 	}
 
-	void SetUniforms(float x, float y, float z)
+	void SetUniforms(float t)
 	{
-		xconstantBuffer.shift.x = x;
-		xconstantBuffer.shift.y = y;
-		xconstantBuffer.shift.z = z;
+		cb.proj.SetSymetricFrustumRH<xRenderer>(1.0f, 100.0f, 1.0f, 1.0f*640.0f/480.0f);
+		
+		float deg = 360.0f*t;
+		float rad = float(deg * M_PI / 180.0);
 
-		xconstantBuffer.proj.SetSymetricFrustum(1.0f, 10.0f, 1.0f, 1.0f);
+		float dist = 1.5f;
+		float x = cos(rad)*dist;
+		float y = sin(rad)*dist;
 
-		ir->UpdateConstantBuffer(constantBuffer, &xconstantBuffer);
+		zls::math::vec3 eyePos(x, -0.0f, y), targetPos(0.0f, 0.0f, 0.0), upDir(0.0f, 1.0f, 0.0f);
+		cb.view.SetViewLookatRH(eyePos, targetPos, upDir);
+		
+		//cb.model.SetTranslate(targetPos.x, targetPos.y, targetPos.z);
+		cb.model.SetRotateY(deg);
+
+		ir->UpdateConstantBuffer(constantBuffer, &cb);
 		ir->ActualizeConstantBuffer(constantBuffer, simple, "BlockName");
 	}
 
@@ -451,7 +469,6 @@ int _tmain(int argc, _TCHAR* argv[])
 			ErrorExit("Unable to initialize GX system!\n");
 		}
 	}
-	myLayout.AddElement(&color2Descp);
 	myLayout.AddElement(&posDescp);
 	myLayout.AddElement(&colorDescp);
 	myLayout.AddElement(&texDescp);
