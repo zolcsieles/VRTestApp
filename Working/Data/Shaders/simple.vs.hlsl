@@ -15,7 +15,6 @@ struct Input
 struct TResult
 {
 	float4 Position : SV_POSITION;
-	float3 Color : COLOR;
 	float2 uv : TEXCOORD;
 };
 
@@ -31,7 +30,6 @@ TResult main(Input inp)
 	float vert = 1.0f;
 
 	ret.Position = mul(mvp, float4(inp.pos, 1.0f));
-	ret.Color = inp.color;
 	ret.uv = inp.tc;
 
 	return ret;

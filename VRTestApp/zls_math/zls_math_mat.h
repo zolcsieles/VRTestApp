@@ -4,11 +4,17 @@ namespace zls
 {
 	namespace math
 	{
-		template<typename T, int row, int col>
+		template<typename T, int col, int row>
 		class _math
 		{
 		protected:
-			T m[row][col];
+			//m[col][row]
+			T m[col][row];
+
+			inline void CopyTo(_math* target) const
+			{
+				memcpy(target->m, m, sizeof(m));
+			}
 		};
 
 		template<typename T>
@@ -25,9 +31,9 @@ namespace zls
 				)
 			{
 				m[0][0] = _m00;
-				m[0][1] = _m01;
+				m[0][1] = _m10;
 
-				m[1][0] = _m10;
+				m[1][0] = _m01;
 				m[1][1] = _m11;
 			}
 
@@ -35,8 +41,8 @@ namespace zls
 
 			void SetIdentity()
 			{
-				          m[0][1] = 
-				m[1][0] =           zls::math::traits<T>::ZERO;
+				          m[1][0] = 
+				m[0][1] =           zls::math::traits<T>::ZERO;
 				m[0][0] = m[1][1] = zls::math::traits<T>::ONE;
 			}
 		};
@@ -56,15 +62,15 @@ namespace zls
 				)
 			{
 				m[0][0] = _m00;
-				m[0][1] = _m01;
-				m[0][2] = _m02;
+				m[0][1] = _m10;
+				m[0][2] = _m20;
 
-				m[1][0] = _m10;
+				m[1][0] = _m01;
 				m[1][1] = _m11;
-				m[1][2] = _m12;
+				m[1][2] = _m21;
 
-				m[2][0] = _m20;
-				m[2][1] = _m21;
+				m[2][0] = _m02;
+				m[2][1] = _m12;
 				m[2][2] = _m22;
 			}
 
@@ -72,16 +78,18 @@ namespace zls
 
 			void SetIdentity()
 			{
-				          m[0][1] = m[0][2] =
-				m[1][0] =           m[1][2] =
-				m[2][0] = m[2][1] =           zls::math::traits<T>::ZERO;
-				m[0][0] = [1][1] =  m[2][2] = zls::math::traits<T>::ONE;
+				          m[1][0] = m[2][0] =
+				m[0][1] =           m[2][1] =
+				m[0][2] = m[1][2] =           zls::math::traits<T>::ZERO;
+				m[0][0] = m[1][1] = m[2][2] = zls::math::traits<T>::ONE;
 			}
 		};
 
 		template<typename T>
 		class Mat4 : public _math<T, 4, 4>
 		{
+		private:
+			static const Mat4 identity;
 		public:
 			Mat4()
 			{
@@ -95,54 +103,39 @@ namespace zls
 				)
 			{
 				m[0][0] = _m00;
-				m[0][1] = _m01;
-				m[0][2] = _m02;
-				m[0][3] = _m03;
+				m[0][1] = _m10;
+				m[0][2] = _m20;
+				m[0][3] = _m30;
 
-				m[1][0] = _m10;
+				m[1][0] = _m01;
 				m[1][1] = _m11;
-				m[1][2] = _m12;
-				m[1][3] = _m13;
+				m[1][2] = _m21;
+				m[1][3] = _m31;
 
-				m[2][0] = _m20;
-				m[2][1] = _m21;
+				m[2][0] = _m02;
+				m[2][1] = _m12;
 				m[2][2] = _m22;
-				m[2][3] = _m23;
+				m[2][3] = _m32;
 
-				m[3][0] = _m30;
-				m[3][1] = _m31;
-				m[3][2] = _m32;
+				m[3][0] = _m03;
+				m[3][1] = _m13;
+				m[3][2] = _m23;
 				m[3][3] = _m33;
 			}
 
 			//
-
 			void SetIdentity()
 			{
-				          m[0][1] = m[0][2] = m[0][3] =
-				m[1][0] =           m[1][2] = m[1][3] =
-				m[2][0] = m[2][1] =           m[2][3] = 
-				m[3][0] = m[3][1] = m[3][2]           = zls::math::traits<T>::ZERO;
+				          m[1][0] = m[2][0] = m[3][0] =
+				m[0][1] =           m[2][1] = m[3][1] =
+				m[0][2] = m[1][2] =           m[3][2] = 
+				m[0][3] = m[1][3] = m[2][3]           = zls::math::traits<T>::ZERO;
 				m[0][0] = m[1][1] = m[2][2] = m[3][3] = zls::math::traits<T>::ONE;
 			}
 
 			void SetTranslate(T x, T y, T z)
 			{
-				m[0][0] = zls::math::traits<T>::ONE;
-				m[0][1] = zls::math::traits<T>::ZERO;
-				m[0][2] = zls::math::traits<T>::ZERO;
-				m[0][3] = zls::math::traits<T>::ZERO;
-
-				m[1][0] = zls::math::traits<T>::ZERO;
-				m[1][1] = zls::math::traits<T>::ONE;
-				m[1][2] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
-
-				m[2][0] = zls::math::traits<T>::ZERO;
-				m[2][1] = zls::math::traits<T>::ZERO;
-				m[2][2] = zls::math::traits<T>::ONE;
-				m[2][3] = zls::math::traits<T>::ZERO;
-
+				identity.CopyTo(this);
 				m[3][0] = x;
 				m[3][1] = y;
 				m[3][2] = z;
@@ -155,25 +148,23 @@ namespace zls
 				Vec3<T> xDir = (upDir.cross(zDir)).normal();
 				Vec3<T> yDir = zDir.cross(xDir);
 
+				identity.CopyTo(this);
+
 				m[0][0] = xDir.x;
-				m[1][0] = xDir.y;
-				m[2][0] = xDir.z;
-				m[3][0] = -(xDir*eyePos);
-
 				m[0][1] = yDir.x;
-				m[1][1] = yDir.y;
-				m[2][1] = yDir.z;
-				m[3][1] = -(yDir*eyePos);
-
 				m[0][2] = zDir.x;
-				m[1][2] = zDir.y;
-				m[2][2] = zDir.z;
-				m[3][2] = -(zDir*eyePos);
 
-				m[0][3] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
-				m[2][3] = zls::math::traits<T>::ZERO;
-				m[3][3] = zls::math::traits<T>::ONE;
+				m[1][0] = xDir.y;
+				m[1][1] = yDir.y;
+				m[1][2] = zDir.y;
+
+				m[2][0] = xDir.z;
+				m[2][1] = yDir.z;
+				m[2][2] = zDir.z;
+
+				m[3][0] = -(xDir*eyePos);
+				m[3][1] = -(yDir*eyePos);
+				m[3][2] = -(zDir*eyePos);
 			}
 
 			void SetViewLookatLH(const Vec3<T>& eyePos, const Vec3<T>& targetPos, const Vec3<T>& upDir)
@@ -182,56 +173,23 @@ namespace zls
 				Vec3<T> xDir = (upDir.cross(zDir)).normal();
 				Vec3<T> yDir = zDir.cross(xDir);
 
+				identity.CopyTo(this);
+
 				m[0][0] = xDir.x;
-				m[0][1] = xDir.y;
-				m[0][2] = xDir.z;
-				m[0][3] = zls::math::traits<T>::ZERO;
+				m[0][1] = yDir.x;
+				m[0][2] = xDir.x;
 
-				m[1][0] = yDir.x;
+				m[1][0] = xDir.y;
 				m[1][1] = yDir.y;
-				m[1][2] = yDir.z;
-				m[1][3] = zls::math::traits<T>::ZERO;
+				m[1][2] = zDir.y;
 
-				m[2][0] = zDir.x;
-				m[2][1] = zDir.y;
+				m[2][0] = xDir.z;
+				m[2][1] = yDir.z;
 				m[2][2] = zDir.z;
-				m[2][3] = zls::math::traits<T>::ZERO;
 
 				m[3][0] = -(xDir*eyePos);
 				m[3][1] = -(yDir*eyePos);
 				m[3][2] = -(zDir*eyePos);
-				m[3][3] = zls::math::traits<T>::ONE;
-			}
-
-			void SetFrustum(const T _near, const T _far, const T _top, const T _bottom, const T _left, const T _right)
-			{
-				const T n2 = 2 * _near;
-				const T rpl = _right + _left;
-				const T rml = _right - _left;
-				const T tmb = _top - _bottom;
-				const T tpb = _top + _bottom;
-				const T fpn = _far + _near;
-				const T fmn = _far - _near;
-
-				m[0][0] = n2 / rml;
-				m[1][0] = zls::math::traits<T>::ZERO;
-				m[2][0] = rpl / rml;
-				m[3][0] = zls::math::traits<T>::ZERO;
-
-				m[0][1] = zls::math::traits<T>::ZERO;
-				m[1][1] = n2 / tmb;
-				m[2][1] = tpb / tmb;
-				m[3][1] = zls::math::traits<T>::ZERO;
-
-				m[0][2] = zls::math::traits<T>::ZERO;
-				m[1][2] = zls::math::traits<T>::ZERO;
-				m[2][2] = (-fpn) / fmn;
-				m[3][2] = (-n2*_far) / fmn;
-
-				m[0][3] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
-				m[2][3] = -zls::math::traits<T>::ONE;
-				m[3][3] = zls::math::traits<T>::ZERO;
 			}
 
 			void _SymetricRH_DX(const T _near, const T _far)
@@ -243,9 +201,9 @@ namespace zls
 
 			void _SymetricRH_GL(const T _near, const T _far)
 			{
-				const T fmn = _far - _near;
-				m[2][2] = -(_far + _near) / fmn;
-				m[3][2] = (-2 * _far*_near) / fmn;
+				const T nmf = _near - _far;
+				m[2][2] = (_far + _near) / nmf;
+				m[3][2] = (2 * _far*_near) / nmf;
 			}
 
 			void _SymetricLH_DX(const T _near, const T _far)
@@ -263,29 +221,43 @@ namespace zls
 			}
 
 			template<unsigned int renderer>
-			void SetSymetricFrustumRH(const T _near, const T _far, const T _top, const T _right)
+			void SetFrustumRH(const T _near, const T _far, const T _top, const T _bottom, const T _left, const T _right)
 			{
-				m[0][0] = _near / _right;
-				m[1][0] = zls::math::traits<T>::ZERO;
-				m[2][0] = zls::math::traits<T>::ZERO;
-				m[3][0] = zls::math::traits<T>::ZERO;
+				const T n2 = 2 * _near;
+				const T rml = _right - _left;
+				const T tmb = _top - _bottom;
 
-				m[0][1] = zls::math::traits<T>::ZERO;
-				m[1][1] = _near / _top;
-				m[2][1] = zls::math::traits<T>::ZERO;
-				m[3][1] = zls::math::traits<T>::ZERO;
+				identity.CopyTo(this);
 
-				m[0][2] = zls::math::traits<T>::ZERO;
-				m[1][2] = zls::math::traits<T>::ZERO;
+				m[0][0] = n2 / rml;
+				m[1][1] = n2 / tmb;
+
+				m[2][0] = (_right+_left) / rml;
+				m[2][1] = (_top+_bottom) / tmb;
 
 				switch (renderer)
 				{
-				case 0: _SymetricRH_DX(_near, _far);  break;//D3D
+				case 0: _SymetricRH_DX(_near, _far); break;//D3D
 				case 1: _SymetricRH_GL(_near, _far); break;//OGL
 				}
 
-				m[0][3] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
+				m[2][3] = -zls::math::traits<T>::ONE;
+				m[3][3] = zls::math::traits<T>::ZERO;
+			}
+
+			template<unsigned int renderer>
+			void SetSymetricFrustumRH(const T _near, const T _far, const T _top, const T _right)
+			{
+				identity.CopyTo(this);
+				m[0][0] = _near / _right;
+				m[1][1] = _near / _top;
+
+				switch (renderer)
+				{
+				case 0: _SymetricRH_DX(_near, _far); break;//D3D
+				case 1: _SymetricRH_GL(_near, _far); break;//OGL
+				}
+
 				m[2][3] = -zls::math::traits<T>::ONE;
 				m[3][3] = zls::math::traits<T>::ZERO;
 			}
@@ -293,19 +265,12 @@ namespace zls
 			template<unsigned int renderer>
 			void SetSymetricPerspectiveRH(const T _near, const T _far, const T _fovY, const T _aspect)
 			{
-				const T halffovY = fovY/2 * M_PI / 180.0;
+				identity.CopyTo(this);
+				const T halffovY = fovY / 2 * M_PI / 180.0;
+
 				m[0][0] = zls::math::traits<T>::ONE / tan(halffovY);
-				m[1][0] = zls::math::traits<T>::ZERO;
-				m[2][0] = zls::math::traits<T>::ZERO;
-				m[3][0] = zls::math::traits<T>::ZERO;
 
-				m[0][1] = zls::math::traits<T>::ZERO;
 				m[1][1] = m[0][0]*_aspect;
-				m[2][1] = zls::math::traits<T>::ZERO;
-				m[3][1] = zls::math::traits<T>::ZERO;
-
-				m[0][2] = zls::math::traits<T>::ZERO;
-				m[1][2] = zls::math::traits<T>::ZERO;
 
 				switch (renderer)
 				{
@@ -313,8 +278,31 @@ namespace zls
 				case 1: _SymetricRH_GL(_near, _far); break;//OGL
 				}
 
-				m[0][3] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
+				m[2][3] = -zls::math::traits<T>::ONE;
+				m[3][3] = zls::math::traits<T>::ZERO;
+			}
+
+			template<unsigned int renderer>
+			void SetFrustumLH(const T _near, const T _far, const T _top, const T _bottom, const T _left, const T _right)
+			{
+				const T n2 = 2 * _near;
+				const T rml = _right - _left;
+				const T tmb = _top - _bottom;
+
+				identity.CopyTo(this);
+
+				m[0][0] = n2 / rml;
+				m[1][1] = n2 / tmb;
+
+				m[2][0] = (_right + _left) / rml;
+				m[2][1] = (_top + _bottom) / tmb;
+
+				switch (renderer)
+				{
+				case 0: _SymetricLH_DX(_near, _far); break;//D3D
+				case 1: _SymetricLH_GL(_near, _far); break;//OGL
+				}
+
 				m[2][3] = -zls::math::traits<T>::ONE;
 				m[3][3] = zls::math::traits<T>::ZERO;
 			}
@@ -322,27 +310,16 @@ namespace zls
 			template<unsigned int renderer>
 			void SetSymetricFrustumLH(const T _near, const T _far, const T _top, const T _right)
 			{
+				identity.CopyTo(this);
 				m[0][0] = _near / _right;
-				m[1][0] = zls::math::traits<T>::ZERO;
-				m[2][0] = zls::math::traits<T>::ZERO;
-				m[3][0] = zls::math::traits<T>::ZERO;
-
-				m[0][1] = zls::math::traits<T>::ZERO;
 				m[1][1] = _near / _top;
-				m[2][1] = zls::math::traits<T>::ZERO;
-				m[3][1] = zls::math::traits<T>::ZERO;
-
-				m[0][2] = zls::math::traits<T>::ZERO;
-				m[1][2] = zls::math::traits<T>::ZERO;
 
 				switch (renderer)
 				{
-				case 0: _SymetricLH_DX(_near, _far);  break;//D3D
+				case 0: _SymetricLH_DX(_near, _far); break;//D3D
 				case 1: _SymetricLH_GL(_near, _far); break;//OGL
 				}
 
-				m[0][3] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
 				m[2][3] = zls::math::traits<T>::ONE;
 				m[3][3] = zls::math::traits<T>::ZERO;
 			}
@@ -350,77 +327,36 @@ namespace zls
 			template<unsigned int renderer>
 			void SetSymetricPerspectiveLH(const T _near, const T _far, const T _fovY, const T _aspect)
 			{
+				identity.CopyTo(this);
 				const T halffovY = fovY / 2 * M_PI / 180.0;
 				m[0][0] = zls::math::traits<T>::ONE / tan(halffovY);
-				m[1][0] = zls::math::traits<T>::ZERO;
-				m[2][0] = zls::math::traits<T>::ZERO;
-				m[3][0] = zls::math::traits<T>::ZERO;
-
-				m[0][1] = zls::math::traits<T>::ZERO;
 				m[1][1] = m[0][0] * _aspect;
-				m[2][1] = zls::math::traits<T>::ZERO;
-				m[3][1] = zls::math::traits<T>::ZERO;
-
-				m[0][2] = zls::math::traits<T>::ZERO;
-				m[1][2] = zls::math::traits<T>::ZERO;
 
 				switch (renderer)
 				{
-				case 0: _SymetricLH_DX(_near, _far);  break;//D3D
+				case 0: _SymetricLH_DX(_near, _far); break;//D3D
 				case 1: _SymetricLH_GL(_near, _far); break;//OGL
 				}
 
-				m[0][3] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
 				m[2][3] = zls::math::traits<T>::ONE;
 				m[3][3] = zls::math::traits<T>::ZERO;
 			}
 
 			void SetRotateX_RH(T degree)
 			{
+				identity.CopyTo(this);
 				const T rad = T(degree * M_PI / 180.0);
-				m[0][0] = zls::math::traits<T>::ONE;
-				m[0][1] = zls::math::traits<T>::ZERO;
-				m[0][2] = zls::math::traits<T>::ZERO;
-				m[0][3] = zls::math::traits<T>::ZERO;
-
-				m[1][0] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
-
-				m[2][0] = zls::math::traits<T>::ZERO;
-				m[2][3] = zls::math::traits<T>::ZERO;
-
-				m[3][0] = zls::math::traits<T>::ZERO;
-				m[3][1] = zls::math::traits<T>::ZERO;
-				m[3][2] = zls::math::traits<T>::ZERO;
-				m[3][3] = zls::math::traits<T>::ONE;
 
 				m[1][1] = zls::math::cos(rad);
-				m[2][2] = -m[1][1];
-
 				m[1][2] = -zls::math::sin(rad);
 				m[2][1] = -m[1][2];
+				m[2][2] = m[1][1];
 			}
 
 			void SetRotateY_RH(T degree)
 			{
+				identity.CopyTo(this);
 				const T rad = T(degree * M_PI / 180.0);
-
-				m[0][1] = zls::math::traits<T>::ZERO;
-				m[0][3] = zls::math::traits<T>::ZERO;
-
-				m[1][0] = zls::math::traits<T>::ZERO;
-				m[1][1] = zls::math::traits<T>::ONE;
-				m[1][2] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
-
-				m[2][1] = zls::math::traits<T>::ZERO;
-				m[2][3] = zls::math::traits<T>::ZERO;
-
-				m[3][0] = zls::math::traits<T>::ZERO;
-				m[3][1] = zls::math::traits<T>::ZERO;
-				m[3][2] = zls::math::traits<T>::ZERO;
-				m[3][3] = zls::math::traits<T>::ONE;
 
 				m[0][0] = zls::math::cos(rad);
 				m[2][2] = m[0][0];
@@ -431,23 +367,8 @@ namespace zls
 
 			void SetRotateZ_RH(T degree)
 			{
+				identity.CopyTo(this);
 				const T rad = T(degree * M_PI / 180.0);
-
-				m[0][2] = zls::math::traits<T>::ZERO;
-				m[0][3] = zls::math::traits<T>::ZERO;
-
-				m[1][2] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
-
-				m[2][0] = zls::math::traits<T>::ZERO;
-				m[2][1] = zls::math::traits<T>::ZERO;
-				m[2][2] = zls::math::traits<T>::ONE;
-				m[2][3] = zls::math::traits<T>::ZERO;
-
-				m[3][0] = zls::math::traits<T>::ZERO;
-				m[3][1] = zls::math::traits<T>::ZERO;
-				m[3][2] = zls::math::traits<T>::ZERO;
-				m[3][3] = zls::math::traits<T>::ONE;
 
 				m[0][0] = zls::math::cos(rad);
 				m[1][1] = m[0][0];
@@ -458,22 +379,8 @@ namespace zls
 
 			void SetRotateX_LH(T degree)
 			{
+				identity.CopyTo(this);
 				const T rad = T(degree * M_PI / 180.0);
-				m[0][0] = zls::math::traits<T>::ONE;
-				m[0][1] = zls::math::traits<T>::ZERO;
-				m[0][2] = zls::math::traits<T>::ZERO;
-				m[0][3] = zls::math::traits<T>::ZERO;
-
-				m[1][0] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
-
-				m[2][0] = zls::math::traits<T>::ZERO;
-				m[2][3] = zls::math::traits<T>::ZERO;
-
-				m[3][0] = zls::math::traits<T>::ZERO;
-				m[3][1] = zls::math::traits<T>::ZERO;
-				m[3][2] = zls::math::traits<T>::ZERO;
-				m[3][3] = zls::math::traits<T>::ONE;
 
 				m[1][1] = zls::math::cos(rad);
 				m[2][2] = m[1][1];
@@ -484,23 +391,8 @@ namespace zls
 
 			void SetRotateY_LH(T degree)
 			{
+				identity.CopyTo(this);
 				const T rad = T(degree * M_PI / 180.0);
-
-				m[0][1] = zls::math::traits<T>::ZERO;
-				m[0][3] = zls::math::traits<T>::ZERO;
-
-				m[1][0] = zls::math::traits<T>::ZERO;
-				m[1][1] = zls::math::traits<T>::ONE;
-				m[1][2] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
-
-				m[2][1] = zls::math::traits<T>::ZERO;
-				m[2][3] = zls::math::traits<T>::ZERO;
-
-				m[3][0] = zls::math::traits<T>::ZERO;
-				m[3][1] = zls::math::traits<T>::ZERO;
-				m[3][2] = zls::math::traits<T>::ZERO;
-				m[3][3] = zls::math::traits<T>::ONE;
 
 				m[0][0] = zls::math::cos(rad);
 				m[2][2] = m[0][0];
@@ -511,23 +403,8 @@ namespace zls
 
 			void SetRotateZ_LH(T degree)
 			{
+				identity.CopyTo(this);
 				const T rad = T(degree * M_PI / 180.0);
-
-				m[0][2] = zls::math::traits<T>::ZERO;
-				m[0][3] = zls::math::traits<T>::ZERO;
-
-				m[1][2] = zls::math::traits<T>::ZERO;
-				m[1][3] = zls::math::traits<T>::ZERO;
-
-				m[2][0] = zls::math::traits<T>::ZERO;
-				m[2][1] = zls::math::traits<T>::ZERO;
-				m[2][2] = zls::math::traits<T>::ONE;
-				m[2][3] = zls::math::traits<T>::ZERO;
-
-				m[3][0] = zls::math::traits<T>::ZERO;
-				m[3][1] = zls::math::traits<T>::ZERO;
-				m[3][2] = zls::math::traits<T>::ZERO;
-				m[3][3] = zls::math::traits<T>::ONE;
 
 				m[0][0] = zls::math::cos(rad);
 				m[1][1] = m[0][0];
@@ -542,6 +419,37 @@ namespace zls
 			{
 				return &m[0][0];
 			}
+
+			Mat4 operator*(Mat4& o)
+			{
+				return Mat4(
+					m[0][0] * o.m[0][0] + m[1][0] * o.m[0][1] + m[2][0] * o.m[0][2] + m[3][0] * o.m[0][3],
+					m[0][0] * o.m[1][0] + m[1][0] * o.m[1][1] + m[2][0] * o.m[1][2] + m[3][0] * o.m[1][3],
+					m[0][0] * o.m[2][0] + m[1][0] * o.m[2][1] + m[2][0] * o.m[2][2] + m[3][0] * o.m[2][3],
+					m[0][0] * o.m[3][0] + m[1][0] * o.m[3][1] + m[2][0] * o.m[3][2] + m[3][0] * o.m[3][3],
+
+					m[0][1] * o.m[0][0] + m[1][1] * o.m[0][1] + m[2][1] * o.m[0][2] + m[3][1] * o.m[0][3],
+					m[0][1] * o.m[1][0] + m[1][1] * o.m[1][1] + m[2][1] * o.m[1][2] + m[3][1] * o.m[1][3],
+					m[0][1] * o.m[2][0] + m[1][1] * o.m[2][1] + m[2][1] * o.m[2][2] + m[3][1] * o.m[2][3],
+					m[0][1] * o.m[3][0] + m[1][1] * o.m[3][1] + m[2][1] * o.m[3][2] + m[3][1] * o.m[3][3],
+
+					m[0][2] * o.m[0][0] + m[1][2] * o.m[0][1] + m[2][2] * o.m[0][2] + m[3][2] * o.m[0][3],
+					m[0][2] * o.m[1][0] + m[1][2] * o.m[1][1] + m[2][2] * o.m[1][2] + m[3][2] * o.m[1][3],
+					m[0][2] * o.m[2][0] + m[1][2] * o.m[2][1] + m[2][2] * o.m[2][2] + m[3][2] * o.m[2][3],
+					m[0][2] * o.m[3][0] + m[1][2] * o.m[3][1] + m[2][2] * o.m[3][2] + m[3][2] * o.m[3][3],
+
+					m[0][3] * o.m[0][0] + m[1][3] * o.m[0][1] + m[2][3] * o.m[0][2] + m[3][3] * o.m[0][3],
+					m[0][3] * o.m[1][0] + m[1][3] * o.m[1][1] + m[2][3] * o.m[1][2] + m[3][3] * o.m[1][3],
+					m[0][3] * o.m[2][0] + m[1][3] * o.m[2][1] + m[2][3] * o.m[2][2] + m[3][3] * o.m[2][3],
+					m[0][3] * o.m[3][0] + m[1][3] * o.m[3][1] + m[2][3] * o.m[3][2] + m[3][3] * o.m[3][3]
+					);
+			}
+
+			Mat4 operator/(Mat4& o)
+			{
+				return Mat4();
+			}
+
 		};
 
 		typedef Mat2<float> mat2;
@@ -559,6 +467,8 @@ namespace zls
 		typedef Mat2<double> dmat2x2;
 		typedef Mat3<double> dmat3x3;
 		typedef Mat4<double> dmat4x4;
+
+		const Mat4<float> Mat4<float>::identity(1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1);
 	}
 }
 

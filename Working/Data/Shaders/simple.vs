@@ -9,7 +9,6 @@ uniform BlockName {
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 color;
 layout(location = 2) in vec2 tc;
-out vec3 col;
 out vec2 uv;
 
 void main()
@@ -22,6 +21,5 @@ void main()
 	mat4x4 mvp = Block.proj * (Block.view * Block.model);
 	gl_Position = mvp * vec4(pos, 1.0);
 
-	col = color;
 	uv = vec2(tc.x, 1.0-tc.y);
 }

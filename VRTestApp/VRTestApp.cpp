@@ -91,7 +91,6 @@ struct _declspec(align(8)) VS_Constant
 	zls::math::mat4 proj;
 	zls::math::mat4 view;
 	zls::math::mat4 model;
-	zls::math::vec3 shift;
 };
 
 class TGAFile
@@ -285,7 +284,7 @@ public:
 		renderTarget = ir->CreateRenderTarget2D(dispWidth >> 1, dispHeight >> 1);
 	};
 
-	void DoFuck()
+	void DoPostInit()
 	{
 		ir->SetViewport(0, 0, dispWidth, dispHeight);
 		ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
@@ -313,7 +312,7 @@ public:
 		vs = ir->CreateVertexShaderFromSourceFile("Data/Shaders/simple.vs");
 		fs = ir->CreatePixelShaderFromSourceFile("Data/Shaders/simple.fs");
 		simple = ir->CreateShaderProgram(vs, fs, &myLayout);
-
+		
 		constantBuffer = ir->CreateConstantBuffer(sizeof(VS_Constant));
 	}
 
@@ -364,11 +363,20 @@ public:
 		float x = cos(-rad)*dist;
 		float y = sin(-rad)*dist;
 
-		zls::math::vec3 eyePos(x, 2.0f, y), targetPos(0.0f, 0.0f, 0.0), upDir(0.0f, 1.0f, 0.0f);
+		zls::math::vec3 eyePos(0.0f, 2.0f, -4.0f), targetPos(0, 0.0f, 0), upDir(0.0f, 1.0f, 0.0f);
 		cb.view.SetViewLookatRH(eyePos, targetPos, upDir);
 		
-		//cb.model.SetTranslate(targetPos.x, targetPos.y, targetPos.z);
-		cb.model.SetRotateY_RH(deg);
+		zls::math::mat4x4 rot, trn;
+
+		rot.SetRotateY_RH(deg);
+		trn.SetTranslate(targetPos.x+1.0, targetPos.y, targetPos.z);
+		
+		cb.model = trn * rot;
+		/**/
+		cb.proj = cb.proj*cb.view;
+		cb.view.SetIdentity();
+		/**/
+		
 
 		ir->UpdateConstantBuffer(constantBuffer, &cb);
 		ir->ActualizeConstantBuffer(constantBuffer, simple, "BlockName");
@@ -412,11 +420,11 @@ void InitGraphics()
 {
 #if defined(USE_GX_OPENGL)
 	glAppWindow.Init(&gx_wins[GX_OGL]);
-	glAppWindow.DoFuck();
+	glAppWindow.DoPostInit();
 #endif
 #if defined(USE_GX_D3D11)
 	d3dAppWindow.Init(&gx_wins[GX_D3D]);
-	d3dAppWindow.DoFuck();
+	d3dAppWindow.DoPostInit();
 #endif
 }
 
