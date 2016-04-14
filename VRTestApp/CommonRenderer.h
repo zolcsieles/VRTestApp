@@ -79,28 +79,34 @@ public:
 template<typename T>
 struct FormatDescType
 {
+#if defined (USE_GX_OPENGL)
 	static const GLenum GLType;
+#endif
+#if defined (USE_GX_D3D11)
 	static const DXGI_FORMAT DXGIFormats[];
+#endif
 };
 
+#if defined (USE_GX_OPENGL)
 template<> const GLenum FormatDescType<unsigned char>::GLType = GL_UNSIGNED_BYTE;
-template<> const DXGI_FORMAT FormatDescType<unsigned char>::DXGIFormats[] = { DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8G8_UINT, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_R8G8B8A8_UINT };
 template<> const GLenum FormatDescType<char>::GLType = GL_BYTE;
-template<> const DXGI_FORMAT FormatDescType<char>::DXGIFormats[] = { DXGI_FORMAT_R8_SINT, DXGI_FORMAT_R8G8_SINT, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_R8G8B8A8_SINT };
-
 template<> const GLenum FormatDescType<unsigned short>::GLType = GL_UNSIGNED_SHORT;
-template<> const DXGI_FORMAT FormatDescType<unsigned short>::DXGIFormats[] = { DXGI_FORMAT_R16_UINT, DXGI_FORMAT_R16G16_UINT, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_R16G16B16A16_UINT };
 template<> const GLenum FormatDescType<short>::GLType = GL_SHORT;
-template<> const DXGI_FORMAT FormatDescType<short>::DXGIFormats[] = { DXGI_FORMAT_R16_SINT, DXGI_FORMAT_R16G16_SINT, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_R16G16B16A16_SINT };
-
 template<> const GLenum FormatDescType<unsigned int>::GLType = GL_UNSIGNED_INT;
-template<> const DXGI_FORMAT FormatDescType<unsigned int>::DXGIFormats[] = { DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R32G32_UINT, DXGI_FORMAT_R32G32B32_UINT, DXGI_FORMAT_R32G32B32A32_UINT };
 template<> const GLenum FormatDescType<int>::GLType = GL_INT;
-template<> const DXGI_FORMAT FormatDescType<int>::DXGIFormats[] = { DXGI_FORMAT_R32_SINT, DXGI_FORMAT_R32G32_SINT, DXGI_FORMAT_R32G32B32_SINT, DXGI_FORMAT_R32G32B32A32_SINT };
-
 template<> const GLenum FormatDescType<float>::GLType = GL_FLOAT;
-template<> const DXGI_FORMAT FormatDescType<float>::DXGIFormats[] = { DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_R32G32_FLOAT, DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_R32G32B32A32_FLOAT };
+#endif
 
+
+#if defined (USE_GX_D3D11)
+template<> const DXGI_FORMAT FormatDescType<unsigned char>::DXGIFormats[] = { DXGI_FORMAT_R8_UINT, DXGI_FORMAT_R8G8_UINT, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_R8G8B8A8_UINT };
+template<> const DXGI_FORMAT FormatDescType<char>::DXGIFormats[] = { DXGI_FORMAT_R8_SINT, DXGI_FORMAT_R8G8_SINT, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_R8G8B8A8_SINT };
+template<> const DXGI_FORMAT FormatDescType<unsigned short>::DXGIFormats[] = { DXGI_FORMAT_R16_UINT, DXGI_FORMAT_R16G16_UINT, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_R16G16B16A16_UINT };
+template<> const DXGI_FORMAT FormatDescType<short>::DXGIFormats[] = { DXGI_FORMAT_R16_SINT, DXGI_FORMAT_R16G16_SINT, DXGI_FORMAT_UNKNOWN, DXGI_FORMAT_R16G16B16A16_SINT };
+template<> const DXGI_FORMAT FormatDescType<unsigned int>::DXGIFormats[] = { DXGI_FORMAT_R32_UINT, DXGI_FORMAT_R32G32_UINT, DXGI_FORMAT_R32G32B32_UINT, DXGI_FORMAT_R32G32B32A32_UINT };
+template<> const DXGI_FORMAT FormatDescType<int>::DXGIFormats[] = { DXGI_FORMAT_R32_SINT, DXGI_FORMAT_R32G32_SINT, DXGI_FORMAT_R32G32B32_SINT, DXGI_FORMAT_R32G32B32A32_SINT };
+template<> const DXGI_FORMAT FormatDescType<float>::DXGIFormats[] = { DXGI_FORMAT_R32_FLOAT, DXGI_FORMAT_R32G32_FLOAT, DXGI_FORMAT_R32G32B32_FLOAT, DXGI_FORMAT_R32G32B32A32_FLOAT };
+#endif
 
 
 enum FormatDescSemanticEnum {
@@ -115,7 +121,6 @@ static const char* FormatDescSemanticName[] = {
 	"TEXCOORD"
 };
 
-
 class FormatDescBase
 {
 protected:
@@ -129,24 +134,48 @@ protected:
 	const unsigned int mElemSize;
 	const unsigned int mByteOffset;
 
+#if defined (USE_GX_D3D11)
 	const DXGI_FORMAT mDXGIFormat;
+#endif
+#if defined (USE_GX_OPENGL)
 	const GLenum mGLType;
 	GLuint mGLAttribID;
-public:
-	FormatDescBase(const unsigned int ElemCount, const char* ParamName, const FormatDescSemanticEnum Semantic, const unsigned int SemanticIndex, const unsigned int InputSlot, const unsigned int ByteOffset, const DXGI_FORMAT DXGIFormat, const GLenum GLType, const unsigned int ElemSize)
+#endif
+
+protected:
+	FormatDescBase(
+		const unsigned int ElemCount, 
+		const char* ParamName, 
+		const FormatDescSemanticEnum Semantic, 
+		const unsigned int SemanticIndex, 
+		const unsigned int InputSlot, 
+		const unsigned int ByteOffset, 
+#if defined (USE_GX_D3D11)
+		const DXGI_FORMAT DXGIFormat,
+#endif
+#if defined (USE_GX_OPENGL)
+		const GLenum GLType,
+#endif
+		const unsigned int ElemSize)
 		: mElems(ElemCount)
 		, mSemantic(Semantic)
 		, mSemanticIndex(SemanticIndex)
 		, mInputSlot(InputSlot)
 		, mByteOffset(ByteOffset)
+#if defined (USE_GX_D3D11)
 		, mDXGIFormat(DXGIFormat)
+#endif
+#if defined (USE_GX_OPENGL)
 		, mGLType(GLType)
+#endif
 		, mElemSize(ElemSize)
 	{
 		const int len = strlen(ParamName) + 1;
 		mParamName = new char[len];
 		strcpy_s(mParamName, len, ParamName);
 	}
+
+public:
 
 	bool operator<(const FormatDescBase& other) const
 	{
@@ -197,6 +226,7 @@ public:
 		return (void*)mByteOffset;
 	}
 
+#if defined (USE_GX_D3D11)
 	void SetInputElementDesc(D3D11_INPUT_ELEMENT_DESC* elem)
 	{
 		elem->SemanticName = FormatDescSemanticName[mSemantic];
@@ -207,11 +237,13 @@ public:
 		elem->InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
 		elem->InstanceDataStepRate = 0;
 	}
-
+#endif
+#if defined (USE_GX_OPENGL)
 	const GLenum GetGLType()
 	{
 		return mGLType;
 	}
+#endif
 
 
 	unsigned int GetEndOffset()
@@ -219,6 +251,7 @@ public:
 		return mByteOffset + mElemSize * mElems;
 	}
 
+#if defined (USE_GX_OPENGL)
 	void SetGLAttribID(GLuint GLAttribID)
 	{
 		mGLAttribID = GLAttribID;
@@ -228,7 +261,7 @@ public:
 	{
 		return mGLAttribID;
 	}
-
+#endif
 };
 
 struct SlotInfo
@@ -343,16 +376,24 @@ enum PRIMITIVE_TOPOLOGY
 template<PRIMITIVE_TOPOLOGY renderType>
 struct PrimitiveTopology
 {
+#if defined (USE_GX_D3D11)
 	static const D3D_PRIMITIVE_TOPOLOGY DXTopology;
+#endif
+#if defined (USE_GX_OPENGL)
 	static const GLenum GLTopology;
+#endif
 };
 
 
+#if defined (USE_GX_D3D11)
 template<> const D3D_PRIMITIVE_TOPOLOGY PrimitiveTopology<PT_TRIANGLE_LIST>::DXTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 template<> const D3D_PRIMITIVE_TOPOLOGY PrimitiveTopology<PT_TRIANGLE_STRIP>::DXTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
+#endif
 
+#if defined (USE_GX_OPENGL)
 template<> const GLenum PrimitiveTopology<PT_TRIANGLE_LIST>::GLTopology = GL_TRIANGLES;
 template<> const GLenum PrimitiveTopology<PT_TRIANGLE_STRIP>::GLTopology = GL_TRIANGLE_STRIP;
+#endif
 
 
 template<typename T>
@@ -360,7 +401,14 @@ struct FormatDesc : public FormatDescBase
 {
 public:
 	FormatDesc(const int ElemCount, const char* ParamName, const FormatDescSemanticEnum Semantic, const int SemanticIndex, const int InputSlot, const int ByteOffset = 0)
-		: FormatDescBase(ElemCount, ParamName, Semantic, SemanticIndex, InputSlot, ByteOffset, FormatDescType<T>::DXGIFormats[ElemCount - 1], FormatDescType<T>::GLType, sizeof(T))
+		: FormatDescBase(ElemCount, ParamName, Semantic, SemanticIndex, InputSlot, ByteOffset, 
+#if defined (USE_GX_D3D11)
+		FormatDescType<T>::DXGIFormats[ElemCount - 1],
+#endif
+#if defined (USE_GX_OPENGL)
+		FormatDescType<T>::GLType,
+#endif
+		sizeof(T))
 	{
 	}
 };
