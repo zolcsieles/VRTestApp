@@ -329,6 +329,8 @@ public:
 		ir->UnbindModels();
 	}
 
+	int e = 0;
+
 	void Render()
 	{
 		ir->ActivateProgram(simple);
@@ -350,6 +352,7 @@ public:
 
 		ir->UnbindModels();
 		ir->DeactivatePrograms();
+		e ^= 1;
 	}
 
 	void SetUniforms(float t)
@@ -362,21 +365,17 @@ public:
 		float dist = 2.0f;
 		float x = cos(-rad)*dist;
 		float y = sin(-rad)*dist;
-
-		zls::math::vec3 eyePos(0.0f, 2.0f, -4.0f), targetPos(0, 0.0f, 0), upDir(0.0f, 1.0f, 0.0f);
+		const float eyeDistance = 1.5*0;
+		zls::math::vec3 eyePos(0.0f - eyeDistance/2 + eyeDistance*e, 2.0f, -4.0f), targetPos(0, 0.0f, 0), upDir(0.0f, 1.0f, 0.0f);
 		cb.view.SetViewLookatRH(eyePos, targetPos, upDir);
 		
 		zls::math::mat4x4 rot, trn;
 
 		rot.SetRotateY_RH(deg);
-		trn.SetTranslate(targetPos.x+1.0, targetPos.y, targetPos.z);
-		
+		trn.SetRotateX_RH(-deg);
+		rot = rot*trn;
+		trn.SetTranslate(targetPos.x+1.0f, targetPos.y, targetPos.z);
 		cb.model = trn * rot;
-		/**/
-		cb.proj = cb.proj*cb.view;
-		cb.view.SetIdentity();
-		/**/
-		
 
 		ir->UpdateConstantBuffer(constantBuffer, &cb);
 		ir->ActualizeConstantBuffer(constantBuffer, simple, "BlockName");

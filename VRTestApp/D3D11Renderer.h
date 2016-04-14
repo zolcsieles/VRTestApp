@@ -371,7 +371,7 @@ public:
 		}
 		else
 		{
-			Warning("Shader Log: %s\n", errorBlob->GetBufferPointer());
+			Warning("D3D VertexShader Log: %s\n", errorBlob->GetBufferPointer());
 			errorBlob->Release();
 		}
 
@@ -401,6 +401,7 @@ public:
 		}
 		else
 		{
+			Warning("D3D PixelShader Log: %s\n", errorBlob->GetBufferPointer());
 			errorBlob->Release();
 		}
 

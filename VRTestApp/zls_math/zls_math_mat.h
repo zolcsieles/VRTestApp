@@ -37,8 +37,6 @@ namespace zls
 				m[1][1] = _m11;
 			}
 
-			//
-
 			void SetIdentity()
 			{
 				          m[1][0] = 
@@ -74,8 +72,6 @@ namespace zls
 				m[2][2] = _m22;
 			}
 
-			//
-
 			void SetIdentity()
 			{
 				          m[1][0] = m[2][0] =
@@ -93,7 +89,6 @@ namespace zls
 		public:
 			Mat4()
 			{
-				SetIdentity();
 			}
 			Mat4(
 				const T _m00, const T _m01, const T _m02, const T _m03,
@@ -194,9 +189,9 @@ namespace zls
 
 			void _SymetricRH_DX(const T _near, const T _far)
 			{
-				const T fmn = _far - _near;
-				m[2][2] = _far / (_near - _far);
-				m[3][2] = (_far*_near) / (_near - _far);
+				const T nmf = _near - _far;
+				m[2][2] = _far / nmf;
+				m[3][2] = (_far*_near) / nmf;
 			}
 
 			void _SymetricRH_GL(const T _near, const T _far)
@@ -208,9 +203,9 @@ namespace zls
 
 			void _SymetricLH_DX(const T _near, const T _far)
 			{
-				const T fmn = _far - _near;
-				m[2][2] = _far / (_far - _near);
-				m[3][2] = (_far*_near) / (_near - _far);
+				const T nmf = _near - _far;
+				m[2][2] = -_far / nmf;
+				m[3][2] = (_far*_near) / nmf;
 			}
 
 			void _SymetricLH_GL(const T _near, const T _far)
@@ -413,8 +408,6 @@ namespace zls
 				m[1][0] = -m[0][1];
 			}
 
-			//
-
 			T* operator ()()
 			{
 				return &m[0][0];
@@ -444,12 +437,6 @@ namespace zls
 					m[0][3] * o.m[3][0] + m[1][3] * o.m[3][1] + m[2][3] * o.m[3][2] + m[3][3] * o.m[3][3]
 					);
 			}
-
-			Mat4 operator/(Mat4& o)
-			{
-				return Mat4();
-			}
-
 		};
 
 		typedef Mat2<float> mat2;
@@ -472,7 +459,7 @@ namespace zls
 	}
 }
 
-#if DISABLED && !DISABLED
+#if 0
 mat2, mat3, mat4						2x2, 3x3, 4x4 float matrix
 mat2x2, mat2x3, mat2x4					2 - column float matrix of 2, 3, or 4 rows
 mat3x2, mat3x3, mat3x4					3 - column float matrix of 2, 3, or 4 rows

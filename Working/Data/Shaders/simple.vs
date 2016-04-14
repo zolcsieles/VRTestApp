@@ -10,6 +10,7 @@ layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 color;
 layout(location = 2) in vec2 tc;
 out vec2 uv;
+out vec3 fPosition;
 
 void main()
 {
@@ -18,8 +19,12 @@ void main()
 	float horiz = 1.0f;
 	float vert = 1.0f;
 
-	mat4x4 mvp = Block.proj * (Block.view * Block.model);
-	gl_Position = mvp * vec4(pos, 1.0);
+	vec3 dlight = {-1.0, -1.0, -1.0};
+
+	mat4x4 mv = (Block.view * Block.model);
+
+	fPosition = (mv * vec4(pos, 1.0)).xyz;
+	gl_Position = Block.proj * mv * vec4(pos, 1.0);
 
 	uv = vec2(tc.x, 1.0-tc.y);
 }
