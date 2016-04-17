@@ -412,6 +412,35 @@ typedef void (APIENTRYP PFNGLPOPNAMEPROC)(void);
 #include <SDL_opengl_glext.h>
 #pragma comment(lib, "opengl32.lib")
 
+//WGL_NV_DX_interop
+#define WGL_ACCESS_READ_ONLY_NV 0x0000
+#define WGL_ACCESS_READ_WRITE_NV 0x0001
+#define WGL_ACCESS_WRITE_DISCARD_NV 0x0002
+
+typedef BOOL(WINAPI * PFNWGLDXCLOSEDEVICENVPROC) (HANDLE hDevice);
+typedef BOOL(WINAPI * PFNWGLDXLOCKOBJECTSNVPROC) (HANDLE hDevice, GLint count, HANDLE* hObjects);
+typedef BOOL(WINAPI * PFNWGLDXOBJECTACCESSNVPROC) (HANDLE hObject, GLenum access);
+typedef HANDLE(WINAPI * PFNWGLDXOPENDEVICENVPROC) (void* dxDevice);
+typedef HANDLE(WINAPI * PFNWGLDXREGISTEROBJECTNVPROC) (HANDLE hDevice, void* dxObject, GLuint name, GLenum type, GLenum access);
+typedef BOOL(WINAPI * PFNWGLDXSETRESOURCESHAREHANDLENVPROC) (void* dxObject, HANDLE shareHandle);
+typedef BOOL(WINAPI * PFNWGLDXUNLOCKOBJECTSNVPROC) (HANDLE hDevice, GLint count, HANDLE* hObjects);
+typedef BOOL(WINAPI * PFNWGLDXUNREGISTEROBJECTNVPROC) (HANDLE hDevice, HANDLE hObject);
+
+/*
+#define wglDXCloseDeviceNV WGLEW_GET_FUN(__wglewDXCloseDeviceNV)
+#define wglDXLockObjectsNV WGLEW_GET_FUN(__wglewDXLockObjectsNV)
+#define wglDXObjectAccessNV WGLEW_GET_FUN(__wglewDXObjectAccessNV)
+#define wglDXOpenDeviceNV WGLEW_GET_FUN(__wglewDXOpenDeviceNV)
+#define wglDXRegisterObjectNV WGLEW_GET_FUN(__wglewDXRegisterObjectNV)
+#define wglDXSetResourceShareHandleNV WGLEW_GET_FUN(__wglewDXSetResourceShareHandleNV)
+#define wglDXUnlockObjectsNV WGLEW_GET_FUN(__wglewDXUnlockObjectsNV)
+#define wglDXUnregisterObjectNV WGLEW_GET_FUN(__wglewDXUnregisterObjectNV)
+
+#define WGLEW_NV_DX_interop WGLEW_GET_VAR(__WGLEW_NV_DX_interop)
+*/
+//
+
+
 #undef _GL_PROC
 #define _GL_PROC(X, x) extern PFN##X##PROC x
 

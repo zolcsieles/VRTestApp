@@ -73,7 +73,7 @@ public:
 		gl::glAttachShader(prog, *vs);
 		gl::glAttachShader(prog, *fs);
 		gl::glLinkProgram(prog);
-		gl::glGetProgramInfoLog(prog, 65535, NULL, temp);
+		gl::glGetProgramInfoLog(prog, 4096, NULL, temp);
 		if (temp[0]) { Warning("Program Log: %s\n", temp); }
 	}
 	GLuint GetID() { return prog; }
@@ -86,11 +86,11 @@ private:
 	GLRenderTarget* actualRenderTarget;
 
 
-	void _CreateTexture2D(unsigned int width, unsigned int height, void* data, GLuint* texture)
+	void _CreateTexture2D(unsigned int width, unsigned int height, void* data, GLuint* texture, GLuint format = GL_RGBA, GLuint internalFormat = GL_RGBA, GLuint ByteFormat = GL_UNSIGNED_BYTE)
 	{
 		gl::glGenTextures(1, texture);
 		gl::glBindTexture(GL_TEXTURE_2D, *texture);
-		gl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+		gl::glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, ByteFormat, data);
 		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		gl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
@@ -230,17 +230,25 @@ public:
 		gl::glGenFramebuffers(1, &frameBuffer);
 		gl::glBindFramebuffer(GL_FRAMEBUFFER, frameBuffer);
 
-		_CreateTexture2D(width, height, nullptr, &texture);
+		_CreateTexture2D(width, height, nullptr, &texture, GL_RGBA, GL_RGBA8_SNORM, GL_UNSIGNED_BYTE);
 
 		//Renderbuffer - Z buffer
+#define MODE_TEX 1
+#ifdef MODE_TEX
+		_CreateTexture2D(width, height, nullptr, &renderBuffer, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT24, GL_UNSIGNED_INT);
+#else
 		gl::glGenRenderbuffers(1, &renderBuffer);
 		gl::glBindRenderbuffer(GL_RENDERBUFFER, renderBuffer);
 		gl::glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, width, height);
 		gl::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, renderBuffer);
-		gl::glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture, 0);
-
+#endif
+		gl::glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0);
+#ifdef MODE_TEX
+		gl::glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, renderBuffer, 0);
 		//DrawBuffer
+#else
 		gl::glDrawBuffer(GL_COLOR_ATTACHMENT0); //glDrawBuffers helyette???
+#endif
 
 		//
 		if (gl::glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -333,6 +341,11 @@ public:
 		return model;
 	}
 
+	static void APIENTRY glDebugOutput(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+	{
+		Warning("%s\n", message);
+	}
+
 	void Init(Window* wnd)
 	{
 		if (!SDL_GL_CreateContext(wnd->window))
@@ -340,12 +353,18 @@ public:
 			ErrorExit("Unable to create GL Context.");
 		}
 		initGL();
-
+		/*
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		//gl::glCopyImageSubData
+		gl::glEnable(GL_DEBUG_OUTPUT);
+		gl::glDebugMessageCallback(glDebugOutput, nullptr);
+		*/
 		Info("Vendor: %s\n", gl::glGetString(GL_VENDOR));
 		Info("Renderer: %s\n", gl::glGetString(GL_RENDERER));
 		Info("Version: %s\n", gl::glGetString(GL_VERSION));
 		Info("GL Shading Language Version: %s\n", gl::glGetString(GL_SHADING_LANGUAGE_VERSION));
-		//Info("GL Extensions: %s\n", gl::glGetString(GL_EXTENSIONS));
+		const GLubyte* ptr = gl::glGetString(GL_EXTENSIONS);
+		Info("GL Extensions: %s\n", ptr);
 
 		gl::glEnable(GL_DEPTH_TEST);
 		gl::glFrontFace(GL_CW);

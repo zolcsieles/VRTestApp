@@ -1,5 +1,5 @@
 #pragma once
-
+#include "GL.h"
 #include <xstring>
 typedef IShader<ID3D11VertexShader*, ID3DBlob> D3DVertexShader;
 typedef IShader<ID3D11PixelShader*, ID3DBlob> D3DPixelShader;
@@ -16,13 +16,16 @@ struct D3DBuffer
 	{}
 };
 
+#define USE_SAMPLER_STATE
+
 struct D3DTexture
 {
 public:
 	ID3D11Texture2D* mTexture;
 	ID3D11ShaderResourceView* mShaderResourceView;
-	//ID3D11SamplerState* mSamplerState;
-
+#if defined USE_SAMPLER_STATE
+	ID3D11SamplerState* mSamplerState;
+#endif
 	unsigned int mBytePerRow;
 
 public:
@@ -32,7 +35,9 @@ public:
 	D3DTexture(ID3D11Texture2D* _texture, ID3D11ShaderResourceView* _ShaderResourceView, ID3D11SamplerState* _SamplerState, unsigned int _bytePerRow) 
 		: mTexture(_texture)
 		, mShaderResourceView(_ShaderResourceView)
-		//, mSamplerState(_SamplerState)
+#if defined USE_SAMPLER_STATE
+		, mSamplerState(_SamplerState)
+#endif
 		, mBytePerRow(_bytePerRow)
 	{}
 };
@@ -40,15 +45,22 @@ public:
 struct D3DRenderTarget : public D3DTexture
 {
 	ID3D11RenderTargetView* mRenderTargetView;
-	//ID3D11DepthStencilView* mDepthStencilView;
+	
+	ID3D11Texture2D* mDepthTexture;
+	ID3D11DepthStencilView* mDepthStencilView;
+	ID3D11DepthStencilState* mDepthStencilState;
 
 	D3DRenderTarget() : D3DTexture()
 	{
 	}
 
-	D3DRenderTarget(ID3D11Texture2D* _texture, ID3D11ShaderResourceView* _ShaderResourceView, ID3D11SamplerState* _SamplerState, ID3D11RenderTargetView* _renderTargetView, unsigned int _bytePerRow)
+	D3DRenderTarget(ID3D11Texture2D* _texture, ID3D11ShaderResourceView* _ShaderResourceView, ID3D11SamplerState* _SamplerState, ID3D11RenderTargetView* _renderTargetView, unsigned int _bytePerRow, ID3D11Texture2D* _depthTexture, ID3D11DepthStencilView* _DepthStencilView, ID3D11DepthStencilState* _DepthStencilState)
 		: D3DTexture(_texture, _ShaderResourceView, _SamplerState, _bytePerRow)
 		, mRenderTargetView(_renderTargetView)
+
+		, mDepthTexture(_depthTexture)
+		, mDepthStencilView(_DepthStencilView)
+		, mDepthStencilState(_DepthStencilState)
 	{}
 };
 
@@ -79,10 +91,14 @@ protected:
 	IDXGISwapChain* swapchain;
 	ID3D11Device* dev;
 	ID3D11DeviceContext* devcon;
-	ID3D11RenderTargetView* rtv;
-	ID3D11Texture2D* depthStencilBuffer;
-	ID3D11DepthStencilView* depthStencilView;
-	ID3D11DepthStencilState* depthStencilState;
+
+	D3DRenderTarget* defaultRT;
+	/**/
+//	ID3D11RenderTargetView* rtv;
+//	ID3D11Texture2D* depthStencilBuffer;
+//	ID3D11DepthStencilView* depthStencilView;
+//	ID3D11DepthStencilState* depthStencilState;
+	/**/
 
 	ID3D11Buffer* _CreateAndUploadBuffer(int sizeOfBuffer, unsigned int bindFlags, const void* data)
 	{
@@ -137,21 +153,21 @@ protected:
 		}
 	}
 
-	inline ID3D11RenderTargetView** _GetActualRenderTargetView()
-	{
-		return (actualRenderTarget == nullptr) ? &rtv : &actualRenderTarget->mRenderTargetView;
-	}
+// 	inline ID3D11RenderTargetView** _GetActualRenderTargetView()
+// 	{
+// 		//return (actualRenderTarget == nullptr) ? &defaultRT->mRenderTargetView : &actualRenderTarget->mRenderTargetView;
+// 	}
 
-	void _CreateTexture2D(unsigned int width, unsigned int height, unsigned int extra_bind_flags, void* _data, ID3D11Texture2D** texture, ID3D11ShaderResourceView** srv)
+	void _CreateTexture2D(unsigned int width, unsigned int height, unsigned int extra_bind_flags, void* _data, ID3D11Texture2D** texture, ID3D11ShaderResourceView** srv, ID3D11SamplerState** sampler)
 	{
 		D3D11_TEXTURE2D_DESC desc;
+		ZeroMemory(&desc, sizeof(D3D11_TEXTURE2D_DESC));
 		desc.Width = width;
 		desc.Height = height;
 		desc.MipLevels = 1;
 		desc.ArraySize = 1;
 		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		desc.SampleDesc.Count = 1;
-		desc.SampleDesc.Quality = 0;
 		desc.Usage = D3D11_USAGE_DEFAULT;
 		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | extra_bind_flags;
 		desc.CPUAccessFlags = 0;
@@ -180,10 +196,27 @@ protected:
 		srvDesc.Texture2D.MipLevels = desc.MipLevels;
 
 		hr = dev->CreateShaderResourceView(*texture, &srvDesc, srv);
+
+		if (sampler != nullptr)
+		{
+			//=-=-=-=- Not req?
+			HRESULT hr;
+			D3D11_SAMPLER_DESC sDesc;
+			ZeroMemory(&sDesc, sizeof(sDesc));
+			sDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+			sDesc.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
+			sDesc.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
+			sDesc.AddressW = D3D11_TEXTURE_ADDRESS_MIRROR;
+			sDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+			sDesc.MinLOD = 0;
+			sDesc.MaxLOD = 1;
+
+			hr = dev->CreateSamplerState(&sDesc, sampler);
+		}
 	}
 
 public:
-	D3DRenderer() : swapchain(nullptr), dev(nullptr), devcon(nullptr), rtv(nullptr)
+	D3DRenderer() : swapchain(nullptr), dev(nullptr), devcon(nullptr), defaultRT(nullptr)
 	{
 	}
 
@@ -198,9 +231,9 @@ public:
 	void Clear(unsigned int bufferMask)
 	{
 		if (bufferMask & COLOR_BUFFER)
-		devcon->ClearRenderTargetView(*_GetActualRenderTargetView(), mClearColor);
+		devcon->ClearRenderTargetView(actualRenderTarget->mRenderTargetView, mClearColor);
 		if (bufferMask & (DEPTH_BUFFER | STENCIL_BUFFER))
-			devcon->ClearDepthStencilView(depthStencilView, (bufferMask & DEPTH_BUFFER ? D3D11_CLEAR_DEPTH : 0) | (bufferMask & STENCIL_BUFFER ? D3D11_CLEAR_STENCIL : 0), 1.0f, 0);
+			devcon->ClearDepthStencilView(actualRenderTarget->mDepthStencilView, (bufferMask & DEPTH_BUFFER ? D3D11_CLEAR_DEPTH : 0) | (bufferMask & STENCIL_BUFFER ? D3D11_CLEAR_STENCIL : 0), 1.0f, 0);
 	}
 
 	void SetViewport(int x, int y, int width, int height)
@@ -291,23 +324,12 @@ public:
 	{
 		ID3D11Texture2D* texture;
 		ID3D11ShaderResourceView* srv;
-		_CreateTexture2D(width, height, 0, nullptr, &texture, &srv);
 
-		//=-=-=-=- Not req?
-		/*D3D11_SAMPLER_DESC sDesc;
-		ZeroMemory(&sDesc, sizeof(sDesc));
-		sDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-		sDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-		sDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-		sDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-		sDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-		sDesc.MinLOD = 0;
-		sDesc.MaxLOD = D3D11_FLOAT32_MAX;
+		ID3D11SamplerState* samplerState = nullptr;
 
-		ID3D11SamplerState* samplerState;
-		hr = dev->CreateSamplerState(&sDesc, &samplerState);*/
+		_CreateTexture2D(width, height, 0, nullptr, &texture, &srv, &samplerState);
 
-		return new D3DTexture(texture, srv, /*samplerState*/nullptr, width * 4);
+		return new D3DTexture(texture, srv, samplerState/*nullptr*/, width * 4);
 	}
 
 	D3DRenderTarget* CreateRenderTarget2D(unsigned int width, unsigned int height)
@@ -315,7 +337,10 @@ public:
 		ID3D11Texture2D* texture;
 		ID3D11ShaderResourceView* srv;
 		ID3D11RenderTargetView* rtv;
-		_CreateTexture2D(width, height, D3D11_BIND_RENDER_TARGET, nullptr, &texture, &srv);
+
+		ID3D11SamplerState* samplerState = nullptr;
+
+		_CreateTexture2D(width, height, D3D11_BIND_RENDER_TARGET, nullptr, &texture, &srv, &samplerState);
 
 		D3D11_RENDER_TARGET_VIEW_DESC rtDesc;
 		rtDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -323,14 +348,42 @@ public:
 		rtDesc.Texture2D.MipSlice = 0;
 		HRESULT hr = dev->CreateRenderTargetView(texture, &rtDesc, &rtv);
 
-		return new D3DRenderTarget(texture, srv, nullptr, rtv, width * 4);
+		//Depth
+		ID3D11Texture2D* depthTexture;
+		ID3D11DepthStencilView* depthView;
+		ID3D11DepthStencilState* depthState;
+		
+		D3D11_TEXTURE2D_DESC dsbDesc;
+		ZeroMemory(&dsbDesc, sizeof(dsbDesc));
+		dsbDesc.ArraySize = 1;
+		dsbDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+		dsbDesc.CPUAccessFlags = 0;
+		dsbDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		dsbDesc.Width = width;
+		dsbDesc.Height = height;
+		dsbDesc.MipLevels = 1;
+		dsbDesc.SampleDesc.Count = 1;
+		dsbDesc.SampleDesc.Quality = 0;
+		dsbDesc.Usage = D3D11_USAGE_DEFAULT;
+		hr = dev->CreateTexture2D(&dsbDesc, nullptr, &depthTexture);
+
+		hr = dev->CreateDepthStencilView(depthTexture, nullptr, &depthView);
+
+		//Depth State
+		D3D11_DEPTH_STENCIL_DESC dssDesc;
+		dssDesc.DepthEnable = TRUE;
+		dssDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+		dssDesc.DepthFunc = D3D11_COMPARISON_LESS;
+		hr = dev->CreateDepthStencilState(&dssDesc, &depthState);
+
+		return new D3DRenderTarget(texture, srv, samplerState, rtv, width * 4, depthTexture, depthView, depthState);
 	}
 
 	void SetRenderTarget(D3DRenderTarget* rt)
 	{
-		actualRenderTarget = rt;
-		devcon->OMSetRenderTargets(1, _GetActualRenderTargetView(), depthStencilView /*nullptr*/);
-		devcon->OMSetDepthStencilState(depthStencilState, 1);
+		actualRenderTarget = rt == nullptr ? defaultRT : rt;
+		devcon->OMSetRenderTargets(1, &actualRenderTarget->mRenderTargetView, actualRenderTarget->mDepthStencilView);
+		devcon->OMSetDepthStencilState(actualRenderTarget->mDepthStencilState, 1);
 	}
 
 	void SetDefaultRenderTarget(D3DRenderTarget* rt)
@@ -345,7 +398,7 @@ public:
 	void ActivateTexture(D3DTexture* d3dTexture)
 	{
 		devcon->PSSetShaderResources(0, 1, &d3dTexture->mShaderResourceView);
-		//devcon->PSSetSamplers(0, 1, &d3dTexture->mSamplerState);
+		devcon->PSSetSamplers(0, 1, &d3dTexture->mSamplerState);
 	}
 
 	D3DVertexShader* CreateVertexShaderFromSourceFile(const char* fName)
@@ -421,12 +474,12 @@ public:
 	}
 
 	//for D3DRenderer
-	void DX_Defaults(IDXGISwapChain* _swapChain, ID3D11Device* _device, ID3D11DeviceContext* _devicecontext, ID3D11RenderTargetView* _rtv)
+	void DX_Defaults(IDXGISwapChain* _swapChain, ID3D11Device* _device, ID3D11DeviceContext* _devicecontext/*, ID3D11RenderTargetView* _rtv*/)
 	{
 		swapchain = _swapChain;
 		dev = _device;
 		devcon = _devicecontext;
-		rtv = _rtv;
+		//rtv = _rtv;
 	}
 
 	void Init(Window* wnd)
@@ -451,19 +504,19 @@ public:
 		sd.SampleDesc.Quality = 0;
 		sd.Windowed = TRUE;
 
-		D3D_FEATURE_LEVEL FeatureLevels = D3D_FEATURE_LEVEL_11_0;
-		D3D_FEATURE_LEVEL FeatureLevel;
+		//D3D_FEATURE_LEVEL FeatureLevels = D3D_FEATURE_LEVEL_11_0;
+		//D3D_FEATURE_LEVEL FeatureLevel;
 
 		HRESULT hr = S_OK;
-		hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, &FeatureLevels, 1, D3D11_SDK_VERSION, &sd, &swapchain, &dev, &FeatureLevel, &devcon);
+		hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, 0, /*&FeatureLevels*/NULL, /*1*/0, D3D11_SDK_VERSION, &sd, &swapchain, &dev, /*&FeatureLevel*/NULL, &devcon);
 
 		////Create Back buffer
-
 		//Get a pointer to the back buffer
 		ID3D11Texture2D* pBackBuffer;
 		hr = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
 
 		//Create a render-target view
+		ID3D11RenderTargetView* rtv;
 		dev->CreateRenderTargetView(pBackBuffer, NULL, &rtv);
 		pBackBuffer->Release();
 
@@ -480,8 +533,10 @@ public:
 		dsbDesc.SampleDesc.Count = 1;
 		dsbDesc.SampleDesc.Quality = 0;
 		dsbDesc.Usage = D3D11_USAGE_DEFAULT;
+		ID3D11Texture2D* depthStencilBuffer;
 		hr = dev->CreateTexture2D(&dsbDesc, nullptr, &depthStencilBuffer);
 
+		ID3D11DepthStencilView* depthStencilView;
 		hr = dev->CreateDepthStencilView(depthStencilBuffer, nullptr, &depthStencilView);
 
 		//Depth State
@@ -489,10 +544,12 @@ public:
 		dssDesc.DepthEnable = TRUE;
 		dssDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
 		dssDesc.DepthFunc = D3D11_COMPARISON_LESS;
+		ID3D11DepthStencilState* depthStencilState;
 		hr = dev->CreateDepthStencilState(&dssDesc, &depthStencilState);
 
 		//Bind the view
-		SetRenderTarget(nullptr);
+		defaultRT = new D3DRenderTarget(nullptr, nullptr, nullptr, rtv, wnd->Width * 4, depthStencilBuffer, depthStencilView, depthStencilState);
+		SetRenderTarget(defaultRT);
 	}
 
 private:

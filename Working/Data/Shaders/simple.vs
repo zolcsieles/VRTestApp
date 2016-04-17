@@ -7,10 +7,11 @@ uniform BlockName {
 } Block;
 
 layout(location = 0) in vec3 pos;
-layout(location = 1) in vec3 color;
+layout(location = 1) in vec3 colors;
 layout(location = 2) in vec2 tc;
 out vec2 uv;
 out vec3 fPosition;
+out vec3 tcolor;
 
 void main()
 {
@@ -27,4 +28,5 @@ void main()
 	gl_Position = Block.proj * mv * vec4(pos, 1.0);
 
 	uv = vec2(tc.x, 1.0-tc.y);
+	tcolor = colors;
 }

@@ -8,7 +8,7 @@ cbuffer InputBuffer
 struct Input
 {
 	float3 pos : POSITION;
-	float3 color : COLOR;
+	float3 colors : COLOR;
 	float2 tc : TEXCOORD;
 };
 

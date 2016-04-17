@@ -170,7 +170,7 @@ protected:
 #endif
 		, mElemSize(ElemSize)
 	{
-		const int len = strlen(ParamName) + 1;
+		const size_t len = strlen(ParamName) + 1;
 		mParamName = new char[len];
 		strcpy_s(mParamName, len, ParamName);
 	}
@@ -312,7 +312,7 @@ public:
 		}
 	}
 
-	int GetElemCount()
+	size_t GetElemCount()
 	{
 		return layout.size();
 	}
@@ -344,7 +344,7 @@ public:
 		return slotInfo[slot].firstElemIdx;
 	}
 
-	unsigned int GetSlotCount()
+	size_t GetSlotCount()
 	{
 		return slotInfo.size();
 	}

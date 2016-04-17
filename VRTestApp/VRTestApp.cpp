@@ -3,7 +3,6 @@
 
 #include "Config.h"
 #include "GX.h"
-//#include "VR.h"
 #include "ERR.h"
 
 #if defined(USE_GX_OPENGL)
@@ -35,12 +34,16 @@
 
 #include "CommonRenderer.h"
 
+#if defined USE_OPENVR
+#include "VR.h"
+#endif
+
 bool runing = true;
-int dispWidth = 640;
-int dispHeight = 480;
+int dispWidth = 800;
+int dispHeight = 600;
 
 FormatDesc<float> posDescp(3, "pos", FDS_POSITION, 0, 0);
-FormatDesc<float> colorDescp(3, "color", FDS_COLOR, 0, 0, posDescp.GetEndOffset());
+FormatDesc<float> colorDescp(3, "colors", FDS_COLOR, 0, 0, posDescp.GetEndOffset());
 FormatDesc<float> texDescp(2, "tc", FDS_TEXCOORD, 0, 0, colorDescp.GetEndOffset());
 
 Layout myLayout;
@@ -54,13 +57,13 @@ const int nVertices = 8;
 Vert v_buffer[nVertices] =
 {
 	{ { -0.5f, -0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 0.0f } }, //0
-	{ { +0.5f, -0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 1.0f, 0.0f } }, //1
-	{ { +0.5f, +0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 1.0f, 1.0f } }, //2
-	{ { -0.5f, +0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 1.0f } }, //3
+	{ { +0.5f, -0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 2.0f, 0.0f } }, //1
+	{ { +0.5f, +0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 2.0f, 2.0f } }, //2
+	{ { -0.5f, +0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 2.0f } }, //3
 	{ { -0.5f, -0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 0.0f } }, //4
-	{ { +0.5f, -0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 1.0f, 0.0f } }, //5
-	{ { +0.5f, +0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 1.0f, 1.0f } }, //6
-	{ { -0.5f, +0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 1.0f } }, //7
+	{ { +0.5f, -0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 2.0f, 0.0f } }, //5
+	{ { +0.5f, +0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 2.0f, 2.0f } }, //6
+	{ { -0.5f, +0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 2.0f } }, //7
 };
 
 const int nIndices = 6*2 * 3;
@@ -89,7 +92,7 @@ const int nFaces = 2;
 struct _declspec(align(8)) VS_Constant
 {
 	zls::math::mat4 proj;
-	zls::math::mat4 view;
+	zls::math::mat4 view;	
 	zls::math::mat4 model;
 };
 
@@ -239,7 +242,10 @@ protected:
 	VS_Constant cb;
 	TGAFile tga;
 	PTexture2D texture;
-	PRenderTarget renderTarget;
+	PRenderTarget renderTargets[2];
+
+	uint32_t renderWidth;
+	uint32_t renderHeight;
 
 public:
 	SDLAppWindow()
@@ -250,38 +256,29 @@ public:
 	void Init(Window* wnd)
 	{
 		ir->Init(wnd);
+
+		/*OpenVR*/
+		renderWidth = 256 + 128 + 64 + 32 + 16;
+		renderHeight = renderWidth;
+
+		renderWidth = 2048;
+		renderHeight = 2048;
+
+#if defined USE_OPENVR
+		::initVR();
+
+ 		vr::TrackedDevicePose_t poses[32];
+ 		vr::TrackedDevicePose_t poses2[32];
+ 		vrComp->WaitGetPoses(poses, 32, poses2, 32);
+ 		//vrSys->GetRecommendedRenderTargetSize(&renderWidth, &renderHeight);
+		renderWidth >>= 0;
+#endif
 	}
 
-	void PreRender()
-	{
-		//Use Render Target
-		ir->SetRenderTarget(renderTarget);
-		ir->SetViewport(0, 0, dispWidth >> 1, dispHeight >> 1);
-
-		ir->SetClearColor(1.0, 0.0, 0.0, 0.5);
-		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
-
-		//Render
-		ir->ActivateProgram(simple);
-		ir->ActivateTexture(texture);
-		float t = (GetTickCount() % 10000) / 10000.0f;
-		SetUniforms(t);
-
-		ir->BindModel(quad);
-		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
-
-		ir->UnbindModels();
-		ir->DeactivatePrograms();
-
-		ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
-		//Set default render target:
-		ir->SetRenderTarget(nullptr);
-		ir->SetViewport(0, 0, dispWidth, dispHeight);
-	}
-	
 	void InitRenderTarget()
 	{
-		renderTarget = ir->CreateRenderTarget2D(dispWidth >> 1, dispHeight >> 1);
+		renderTargets[0] = ir->CreateRenderTarget2D(renderWidth, renderHeight);
+		renderTargets[1] = ir->CreateRenderTarget2D(renderWidth, renderHeight);
 	};
 
 	void DoPostInit()
@@ -299,11 +296,61 @@ public:
 
 	void monoRenderFrame()
 	{
-		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
+#if defined USE_OPENVR
+ 		vr::TrackedDevicePose_t poses[32];
+ 		vr::TrackedDevicePose_t poses2[32];
+ 		vrComp->WaitGetPoses(poses, 32, poses2, 32);
 
-		//PreRender();
+		vr::EGraphicsAPIConvention gx_api = (vr::EGraphicsAPIConvention)xRenderer;
+
+ 		vr::Texture_t eyeTextures[2] =
+ 		{
+ 			{ (void*)intptr_t(renderTargets[0]->mTexture), gx_api, vr::ColorSpace_Gamma },
+ 			{ (void*)renderTargets[1]->mTexture, gx_api, vr::ColorSpace_Gamma }
+ 		};
+		vr::EVRCompositorError er = vr::VRCompositorError_None;
+#endif
+
+		ir->SetRenderTarget(renderTargets[0]);
+		ir->SetViewport(0, 0, renderWidth, renderHeight);
+		ir->SetClearColor(1.0, 0.0, 0.0, 0.5);
+		PreRender();
+#ifdef USE_OPENVR
+		er = vrComp->Submit(vr::Eye_Left, &eyeTextures[0]);
+#endif
+		ir->SetRenderTarget(renderTargets[1]);
+		ir->SetViewport(0, 0, renderWidth, renderHeight);
+		ir->SetClearColor(0.0, 0.0, 1.0, 0.5);
+		PreRender();
+#ifdef USE_OPENVR
+		er = vrComp->Submit(vr::Eye_Right, &eyeTextures[1]);
+#endif
+
+		ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
+		ir->SetRenderTarget(nullptr);
+		ir->SetViewport(0, 0, dispWidth, dispHeight);
+
 		Render();
 
+		
+#if defined (USE_GX_OPENGL)
+		if (xRenderer == OGL)
+		{
+			gl::glBindTexture(GL_TEXTURE_2D, 0);
+			gl::glFlush();
+		}
+#endif
+#if defined USE_OPENVR
+
+		vr::VRCompositor()->PostPresentHandoff();
+		switch (er)
+ 		{
+ 		case vr::VRCompositorError_DoNotHaveFocus: Warning("VRCompositorError_DoNotHaveFocus\n"); break;
+ 		case vr::VRCompositorError_InvalidTexture: Warning("VRCompositorError_InvalidTexture\n"); break;
+ 		case vr::VRCompositorError_None: break;
+ 		default: Warning("%i - %08x\n", er, er);
+ 		}
+#endif
 		ir->SwapBuffers();
 	}
 
@@ -329,16 +376,15 @@ public:
 		ir->UnbindModels();
 	}
 
-	int e = 0;
-
-	void Render()
+	void PreRender()
 	{
+		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
 		ir->ActivateProgram(simple);
 		float t = (GetTickCount() % 10000) / 10000.0f;
-		SetUniforms(t);
-		
+		SetUniforms(t, true);
+
 		ir->BindModel(quad);
-		
+
 		ir->ActivateTexture(texture);
 		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
 
@@ -352,12 +398,25 @@ public:
 
 		ir->UnbindModels();
 		ir->DeactivatePrograms();
-		e ^= 1;
 	}
 
-	void SetUniforms(float t)
+	void Render()
 	{
-		cb.proj.SetSymetricFrustumRH<xRenderer>(1.0f, 100.0f, 1.0f, 1.0f*640.0f/480.0f);
+		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
+		ir->ActivateProgram(simple);
+		ir->BindModel(quad);
+
+		ir->ActivateTexture(renderTargets[0]);
+		float t = (GetTickCount() % 10000) / 10000.0f;
+		SetUniforms(t, false);
+		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+		ir->UnbindModels();
+		ir->DeactivatePrograms();
+	}
+
+	void SetUniforms(float t, bool sub)
+	{
+		cb.proj.SetSymetricFrustumRH<xRenderer>(1.0f, 100.0f, 1.0f, 1.0f*renderWidth/renderHeight);
 		
 		float deg = 360.0f*t;
 		float rad = float(deg * M_PI / 180.0);
@@ -366,7 +425,7 @@ public:
 		float x = cos(-rad)*dist;
 		float y = sin(-rad)*dist;
 		const float eyeDistance = 1.5*0;
-		zls::math::vec3 eyePos(0.0f - eyeDistance/2 + eyeDistance*e, 2.0f, -4.0f), targetPos(0, 0.0f, 0), upDir(0.0f, 1.0f, 0.0f);
+		zls::math::vec3 eyePos(0.0f, 0.0f, sub ? -2.0f : -3.6f-x), targetPos(0, 0.0f, 0), upDir(0.0f, 1.0f, 0.0f);
 		cb.view.SetViewLookatRH(eyePos, targetPos, upDir);
 		
 		zls::math::mat4x4 rot, trn;
@@ -374,7 +433,7 @@ public:
 		rot.SetRotateY_RH(deg);
 		trn.SetRotateX_RH(-deg);
 		rot = rot*trn;
-		trn.SetTranslate(targetPos.x+1.0f, targetPos.y, targetPos.z);
+		trn.SetTranslate(targetPos.x, targetPos.y, targetPos.z);
 		cb.model = trn * rot;
 
 		ir->UpdateConstantBuffer(constantBuffer, &cb);
@@ -399,6 +458,9 @@ SDLAppWindow<D3D> d3dAppWindow;
 
 void MyExit()
 {
+#if defined USE_OPENVR
+	shutdownVR();
+#endif
 	shutdownGX();
 }
 
@@ -452,6 +514,7 @@ int _tmain(int argc, _TCHAR* argv[])
 #if defined(USE_GX_OPENGL)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 4);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 	gxdrv.push_back(GX_OGL);
 #endif
 #if defined(USE_GX_D3D11)
@@ -499,7 +562,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		Events(dt);
 		
 		monoRenderFrame();
-		//Sleep(5);
+		Sleep(5);
 	}
 
 	return 0;

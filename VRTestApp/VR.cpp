@@ -33,9 +33,9 @@ bool initVR()
 	if (hmdErr != vr::VRInitError_None)
 		return false;
 
-	//	vrDisp = vr::VRExtendedDisplay();
+	//vrDisp = vr::VRExtendedDisplay();
 	vrComp = vr::VRCompositor();
-//	vr::SetGraphicsDevice();
+	//vr::SetGraphicsDevice();
 
 	return true;
 }

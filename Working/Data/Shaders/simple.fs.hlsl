@@ -1,12 +1,7 @@
 //https://msdn.microsoft.com/en-us/library/windows/desktop/ff471376(v=vs.85).aspx
 Texture2D tex;
 
-SamplerState texState
-{
-	Filter = MIN_MAP_MIP_LINEAR;
-	AddressU = Wrap;
-	AddressV = Wrap;
-};
+SamplerState texState;
 
 struct TResult
 {
