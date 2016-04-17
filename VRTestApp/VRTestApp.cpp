@@ -12,10 +12,7 @@
 #endif
 #if defined(USE_GX_D3D11)
 
-//#pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "d3d11.lib")
-//#pragma comment(lib, "dxgdi.lib")
-//#pragma comment(lib, "dwrite.lib")
 
 #include <d3d11_1.h>
 
@@ -39,13 +36,13 @@
 #endif
 
 bool runing = true;
-int dispWidth = 800;
-int dispHeight = 600;
+int dispWidth = 960;
+int dispHeight = 540;
+
 
 FormatDesc<float> posDescp(3, "pos", FDS_POSITION, 0, 0);
 FormatDesc<float> colorDescp(3, "colors", FDS_COLOR, 0, 0, posDescp.GetEndOffset());
 FormatDesc<float> texDescp(2, "tc", FDS_TEXCOORD, 0, 0, colorDescp.GetEndOffset());
-
 Layout myLayout;
 
 struct Vert {
@@ -212,6 +209,49 @@ public:
 
 
 template<RENDERER xRenderer>
+struct SimplePlane
+{
+	typename MyTypes<xRenderer>::Model* model;
+	typename MyTypes<xRenderer>::VertexBuffer* vertexBuffer;
+
+	SimplePlane() {}
+
+	static FormatDesc<float> position;
+	static FormatDesc<float> uv;
+	static Layout layout;
+
+	struct VertexFormat
+	{
+		zls::math::vec2 pos;
+		zls::math::vec2 uv;
+	};
+
+	static const int nVertices = 4;
+	static VertexFormat vertices[];
+
+	static const int nIndices = 6;
+	static unsigned int indices[];
+
+	static void Init()
+	{
+		layout.AddElement(&position);
+		layout.AddElement(&uv);
+		layout.Update();
+	}
+};
+
+template<RENDERER xRenderer> FormatDesc<float> SimplePlane<xRenderer>::position(2, "pos", FDS_POSITION, 0, 0, 0);
+template<RENDERER xRenderer> FormatDesc<float> SimplePlane<xRenderer>::uv(2, "uv", FDS_TEXCOORD, 0, 0, position.GetEndOffset());
+template<RENDERER xRenderer> Layout SimplePlane<xRenderer>::layout;
+template<RENDERER xRenderer> typename SimplePlane<xRenderer>::VertexFormat SimplePlane<xRenderer>::vertices[nVertices] =
+{
+	{ { -1.0f, -1.0f }, { 0.0f, 0.0f } }, //bl
+	{ { -1.0f, 1.0f }, { 0.0f, 1.0f } }, //tl
+	{ {  1.0f, -1.0f }, { 1.0f, 0.0f } }, //br
+	{ { 1.0f, 1.0f }, { 1.0f, 1.0f } } //tr
+};
+
+template<RENDERER xRenderer>
 class SDLAppWindow
 {
 protected:
@@ -229,10 +269,12 @@ protected:
 protected:
 	PRenderer ir;
 
-	PVertexShader vs;
-	PPixelShader fs;
-	PShaderProgram simple;
+	PVertexShader vs, simplePlaneVS;
+	PPixelShader fs, simplePlaneFS;
+	PShaderProgram simple, simplePlaneProgram;
 	PModel quad;
+
+	SimplePlane<xRenderer> simplePlane;
 
 	PVertexBuffer vertBuffer, colorBuffer;
 	PIndexBuffer indexBuffer;
@@ -258,11 +300,8 @@ public:
 		ir->Init(wnd);
 
 		/*OpenVR*/
-		renderWidth = 256 + 128 + 64 + 32 + 16;
-		renderHeight = renderWidth;
-
-		renderWidth = 2048;
-		renderHeight = 2048;
+		renderWidth = 1920;
+		renderHeight = 1080;
 
 #if defined USE_OPENVR
 		::initVR();
@@ -270,7 +309,7 @@ public:
  		vr::TrackedDevicePose_t poses[32];
  		vr::TrackedDevicePose_t poses2[32];
  		vrComp->WaitGetPoses(poses, 32, poses2, 32);
- 		//vrSys->GetRecommendedRenderTargetSize(&renderWidth, &renderHeight);
+ 		vrSys->GetRecommendedRenderTargetSize(&renderWidth, &renderHeight);
 		renderWidth >>= 0;
 #endif
 	}
@@ -286,12 +325,15 @@ public:
 		ir->SetViewport(0, 0, dispWidth, dispHeight);
 		ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
 
+		simplePlane.Init();
+
 		InitShaders();
 		InitGeometry();
 		InitRenderTarget();
 		
 		tga.Load("Data/Textures/Circle.tga", xRenderer);
 		InitTexture();
+		
 	}
 
 	void monoRenderFrame()
@@ -313,35 +355,25 @@ public:
 
 		ir->SetRenderTarget(renderTargets[0]);
 		ir->SetViewport(0, 0, renderWidth, renderHeight);
-		ir->SetClearColor(1.0, 0.0, 0.0, 0.5);
+		//ir->SetClearColor(0.0, 0.0, 0.0, 0.5);
 		PreRender();
 #ifdef USE_OPENVR
 		er = vrComp->Submit(vr::Eye_Left, &eyeTextures[0]);
 #endif
 		ir->SetRenderTarget(renderTargets[1]);
 		ir->SetViewport(0, 0, renderWidth, renderHeight);
-		ir->SetClearColor(0.0, 0.0, 1.0, 0.5);
+		//ir->SetClearColor(0.0, 0.0, 1.0, 0.5);
 		PreRender();
 #ifdef USE_OPENVR
 		er = vrComp->Submit(vr::Eye_Right, &eyeTextures[1]);
 #endif
-
-		ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
+		
+		//ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
 		ir->SetRenderTarget(nullptr);
 		ir->SetViewport(0, 0, dispWidth, dispHeight);
-
 		Render();
 
-		
-#if defined (USE_GX_OPENGL)
-		if (xRenderer == OGL)
-		{
-			gl::glBindTexture(GL_TEXTURE_2D, 0);
-			gl::glFlush();
-		}
-#endif
 #if defined USE_OPENVR
-
 		vr::VRCompositor()->PostPresentHandoff();
 		switch (er)
  		{
@@ -356,23 +388,27 @@ public:
 
 	void InitShaders()
 	{
+		simplePlaneVS = ir->CreateVertexShaderFromSourceFile("Data/shaders/plane.vs");
+		simplePlaneFS = ir->CreatePixelShaderFromSourceFile("Data/shaders/plane.fs");
+		simplePlaneProgram = ir->CreateShaderProgram(simplePlaneVS, simplePlaneFS, &simplePlane.layout);
+
 		vs = ir->CreateVertexShaderFromSourceFile("Data/Shaders/simple.vs");
 		fs = ir->CreatePixelShaderFromSourceFile("Data/Shaders/simple.fs");
 		simple = ir->CreateShaderProgram(vs, fs, &myLayout);
-		
 		constantBuffer = ir->CreateConstantBuffer(sizeof(VS_Constant));
 	}
 
 	void InitGeometry()
 	{
+		simplePlane.model = ir->CreateModel(&simplePlane.layout);
+		ir->BindModel(simplePlane.model);
+		ir->CreateVertexBuffer(0, simplePlane.nVertices, simplePlane.vertices);
+		ir->UnbindModels();
+		
 		quad = ir->CreateModel(&myLayout);
 		ir->BindModel(quad);
-		//VERTEX
 		vertBuffer = ir->CreateVertexBuffer(0, nVertices, v_buffer);
-
-		//INDEX
 		indexBuffer = ir->CreateIndexBuffer(nIndices, i_buffer);
-
 		ir->UnbindModels();
 	}
 
@@ -384,7 +420,6 @@ public:
 		SetUniforms(t, true);
 
 		ir->BindModel(quad);
-
 		ir->ActivateTexture(texture);
 		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
 
@@ -403,13 +438,19 @@ public:
 	void Render()
 	{
 		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
-		ir->ActivateProgram(simple);
-		ir->BindModel(quad);
-
+		ir->ActivateProgram(simplePlaneProgram);
+		ir->BindModel(simplePlane.model);
+		
+		//Blit left eye image
 		ir->ActivateTexture(renderTargets[0]);
-		float t = (GetTickCount() % 10000) / 10000.0f;
-		SetUniforms(t, false);
-		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+		ir->SetViewport(0, 0, dispWidth >> 1, dispHeight);
+		ir->Render<PT_TRIANGLE_STRIP>(simplePlane.nVertices);
+
+		//Blit right eye image
+		ir->ActivateTexture(renderTargets[1]);
+		ir->SetViewport(dispWidth >> 1, 0, dispWidth >> 1, dispHeight);
+		ir->Render<PT_TRIANGLE_STRIP>(simplePlane.nVertices);
+
 		ir->UnbindModels();
 		ir->DeactivatePrograms();
 	}
@@ -543,11 +584,12 @@ int _tmain(int argc, _TCHAR* argv[])
 			ErrorExit("Unable to initialize GX system!\n");
 		}
 	}
+
 	myLayout.AddElement(&posDescp);
 	myLayout.AddElement(&colorDescp);
 	myLayout.AddElement(&texDescp);
 	myLayout.Update();
-
+	
 	InitGraphics();
 
 	//Matrices

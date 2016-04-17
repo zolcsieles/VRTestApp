@@ -130,12 +130,24 @@
     <None Include="..\Working\Data\Shaders\simple_shaded.vs">
       <Filter>Data\Shaders</Filter>
     </None>
+    <None Include="..\Working\Data\Shaders\plane.fs">
+      <Filter>Data\Shaders</Filter>
+    </None>
+    <None Include="..\Working\Data\Shaders\plane.vs">
+      <Filter>Data\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\Working\Data\Shaders\simple.fs.hlsl">
       <Filter>Data\Shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\Working\Data\Shaders\simple.vs.hlsl">
+      <Filter>Data\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Working\Data\Shaders\plane.fs.hlsl">
+      <Filter>Data\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\Working\Data\Shaders\plane.vs.hlsl">
       <Filter>Data\Shaders</Filter>
     </FxCompile>
   </ItemGroup>

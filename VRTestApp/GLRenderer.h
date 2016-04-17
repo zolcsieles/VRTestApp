@@ -204,7 +204,7 @@ public:
 	template<PRIMITIVE_TOPOLOGY pt>
 	void Render(unsigned int nVertices)
 	{
-		gl::glDrawElements(PrimitiveTopology<pt>::GLTopology, 0, nVertices);
+		gl::glDrawArrays(PrimitiveTopology<pt>::GLTopology, 0, nVertices);
 	}
 
 	void UnbindModels()
@@ -287,7 +287,7 @@ public:
 
 	GLVertexShader* CreateVertexShaderFromSourceFile(const char* fName)
 	{
-		//Info("Loading shader: %s\n", fName);
+		INFO_LOG("OGL - Load & Compile vertex shader: %s\n", fName);
 		char temp[4096];
 		char* con;
 		int len;
@@ -307,7 +307,7 @@ public:
 
 	GLFragmentShader* CreatePixelShaderFromSourceFile(const char* fName)
 	{
-		//Info("Loading shader: %s\n", fName);
+		INFO_LOG("OGL - Load & Compile fragment shader: %s\n", fName);
 		char temp[4096];
 		char* con;
 		int len;

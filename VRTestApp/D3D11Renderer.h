@@ -1,8 +1,30 @@
 #pragma once
 #include "GL.h"
 #include <xstring>
-typedef IShader<ID3D11VertexShader*, ID3DBlob> D3DVertexShader;
+typedef IShader<ID3D11VertexShader*, ID3DBlob> D3DVertexShaderBase;
 typedef IShader<ID3D11PixelShader*, ID3DBlob> D3DPixelShader;
+
+struct D3DVertexShader : public D3DVertexShaderBase
+{
+	ID3D11InputLayout* mInputLayout;
+
+	D3DVertexShader(ID3D11VertexShader* _shader) : D3DVertexShaderBase(_shader), mInputLayout(nullptr)
+	{}
+
+	D3DVertexShader(ID3D11VertexShader* _shader, ID3DBlob* _blob) : D3DVertexShaderBase(_shader, _blob), mInputLayout(nullptr)
+	{}
+
+	void SetInputLayout(ID3D11InputLayout* _inputLayout)
+	{
+		//Assert(_mInputLayout == nullptr)
+		mInputLayout = _inputLayout;
+	}
+
+	ID3D11InputLayout* GetInputLayout()
+	{
+		return mInputLayout;
+	}
+};
 typedef IShaderProgram<D3DVertexShader, D3DPixelShader> D3DShaderProgram;
 
 struct D3DBuffer
@@ -204,9 +226,9 @@ protected:
 			D3D11_SAMPLER_DESC sDesc;
 			ZeroMemory(&sDesc, sizeof(sDesc));
 			sDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
-			sDesc.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
-			sDesc.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
-			sDesc.AddressW = D3D11_TEXTURE_ADDRESS_MIRROR;
+			sDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+			sDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+			sDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
 			sDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
 			sDesc.MinLOD = 0;
 			sDesc.MaxLOD = 1;
@@ -257,6 +279,8 @@ public:
 	{
 		devcon->VSSetShader(*sprog->GetVS(), nullptr, 0);
 		devcon->PSSetShader(*sprog->GetPS(), nullptr, 0);
+
+		devcon->IASetInputLayout(sprog->GetVS()->GetInputLayout());
 	}
 
 	void DeactivatePrograms()
@@ -267,6 +291,7 @@ public:
 	void BindModel(D3DModel* model)
 	{
 		actualModel = model;
+
 	}
 
 	D3DBuffer* CreateVertexBuffer(unsigned int slot, int nVertices, const void* vertData)
@@ -302,7 +327,7 @@ public:
 	{
 		_SetBuffers();
 
-		devcon->IASetPrimitiveTopology(PrimitiveTopology<PT_TRIANGLE_LIST>::DXTopology);
+		devcon->IASetPrimitiveTopology(PrimitiveTopology<pt>::DXTopology);
 		devcon->DrawIndexed(nIndices, 0, 0);
 	}
 
@@ -311,7 +336,7 @@ public:
 	{
 		_SetBuffers();
 
-		devcon->IASetPrimitiveTopology(PrimitiveTopology<PT_TRIANGLE_LIST>::DXTopology);
+		devcon->IASetPrimitiveTopology(PrimitiveTopology<pt>::DXTopology);
 		devcon->Draw(nVertex, 0);
 	}
 
@@ -407,6 +432,7 @@ public:
 		ID3DBlob* blob = nullptr;
 		D3DVertexShader* ptr = nullptr;
 
+		INFO_LOG("D3D - Load & Compile vertex shader: %s\n", fName);
 		wchar_t* fname = nullptr;
 		int fname_len = MultiByteToWideChar(CP_ACP, 0, fName, -1, fname, 0);
 		fname = new wchar_t[fname_len];
@@ -415,6 +441,11 @@ public:
 		delete[] fname;
 		//vs_4_0_level_9_1
 		D3DCompileFromFile(fileName.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", D3DCOMPILE_ENABLE_STRICTNESS, 0, &blob, &errorBlob);
+
+		if (blob == nullptr)
+		{
+			ErrorExit("D3D VertexShader Log - file not found: %s\n", fName);
+		}
 
 		if (errorBlob == nullptr)
 		{
@@ -438,6 +469,7 @@ public:
 		D3DPixelShader* ptr = nullptr;
 
 		wchar_t* fname = nullptr;
+		INFO_LOG("D3D - Load & Compile pixel shader: %s\n", fName);
 		int fname_len = MultiByteToWideChar(CP_ACP, 0, fName, -1, fname, 0);
 		fname = new wchar_t[fname_len];
 		MultiByteToWideChar(CP_ACP, 0, fName, -1, fname, fname_len); // == fname_len
@@ -445,6 +477,11 @@ public:
 		delete[] fname;
 		//ps_4_0_level_9_1
 		D3DCompileFromFile(fileName.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", D3DCOMPILE_ENABLE_STRICTNESS, 0, &blob, &errorBlob);
+
+		if (blob == nullptr)
+		{
+			ErrorExit("D3D PixelShader Log - file not found: %s\n", fName);
+		}
 
 		if (errorBlob == nullptr)
 		{
@@ -567,6 +604,7 @@ private:
 			layout->GetElem(i)->SetInputElementDesc(&inputElemDesc[i]);
 		dev->CreateInputLayout(inputElemDesc, elemCount, vs->GetBlob()->GetBufferPointer(), vs->GetBlob()->GetBufferSize(), &ilay);
 		devcon->IASetInputLayout(ilay);
+		vs->SetInputLayout(ilay);
 		delete inputElemDesc;
 	}
 

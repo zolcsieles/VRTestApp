@@ -170,9 +170,10 @@ protected:
 #endif
 		, mElemSize(ElemSize)
 	{
-		const size_t len = strlen(ParamName) + 1;
+		mParamName = _strdup(ParamName);
+		/*const size_t len = strlen(ParamName) + 1;
 		mParamName = new char[len];
-		strcpy_s(mParamName, len, ParamName);
+		strcpy_s(mParamName, len, ParamName);*/
 	}
 
 public:

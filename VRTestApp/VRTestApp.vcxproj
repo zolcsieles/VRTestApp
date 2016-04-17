@@ -191,6 +191,8 @@
     <ClCompile Include="VRTestApp.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\Working\Data\Shaders\plane.fs" />
+    <None Include="..\Working\Data\Shaders\plane.vs" />
     <None Include="..\Working\Data\Shaders\quad_shader\quad.vs" />
     <None Include="..\Working\Data\Shaders\quad_shader\quad_ilc.fs" />
     <None Include="..\Working\Data\Shaders\quad_shader\quad_sbs.fs" />
@@ -201,6 +203,18 @@
     <None Include="..\Working\Data\Shaders\simple_shaded.vs" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\Working\Data\Shaders\plane.fs.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\Working\Data\Shaders\plane.vs.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="..\Working\Data\Shaders\simple.fs.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
