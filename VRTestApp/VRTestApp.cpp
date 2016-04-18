@@ -39,60 +39,6 @@ bool runing = true;
 int dispWidth = 960;
 int dispHeight = 540;
 
-
-FormatDesc<float> posDescp(3, "pos", FDS_POSITION, 0, 0);
-FormatDesc<float> colorDescp(3, "colors", FDS_COLOR, 0, 0, posDescp.GetEndOffset());
-FormatDesc<float> texDescp(2, "tc", FDS_TEXCOORD, 0, 0, colorDescp.GetEndOffset());
-Layout myLayout;
-
-struct Vert {
-	zls::math::vec3 v_pos;
-	zls::math::vec3 v_col;
-	zls::math::vec2 v_tx;
-};
-const int nVertices = 8;
-Vert v_buffer[nVertices] =
-{
-	{ { -0.5f, -0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 0.0f } }, //0
-	{ { +0.5f, -0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 2.0f, 0.0f } }, //1
-	{ { +0.5f, +0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 2.0f, 2.0f } }, //2
-	{ { -0.5f, +0.5f, -0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 2.0f } }, //3
-	{ { -0.5f, -0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 0.0f } }, //4
-	{ { +0.5f, -0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 2.0f, 0.0f } }, //5
-	{ { +0.5f, +0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 2.0f, 2.0f } }, //6
-	{ { -0.5f, +0.5f, +0.5f }, { 0.25f, 0.25f, 0.25f }, { 0.0f, 2.0f } }, //7
-};
-
-const int nIndices = 6*2 * 3;
-unsigned int i_buffer[nIndices] =
-{
-	2,0,1,
-	0,2,3,
-	5,4,6,
-	6,4,7,
-	6,1,5,
-	2,1,6,
-	7,0,3,
-	4,0,7,
-	6,7,2,
-	7,3,2,
-	4,1,0,
-	5,1,4,
-};
-
-const int SizeOfVertices = sizeof(Vert)*nVertices;
-const int SizeOfIndices = sizeof(unsigned int)*nIndices;
-const int SizeOfColors = sizeof(zls::math::vec3)*nVertices;
-const int nVertexPerFace = 3;
-const int nFaces = 2;
-
-struct _declspec(align(8)) VS_Constant
-{
-	zls::math::mat4 proj;
-	zls::math::mat4 view;	
-	zls::math::mat4 model;
-};
-
 class TGAFile
 {
 	char* buffer;
@@ -229,9 +175,6 @@ struct SimplePlane
 	static const int nVertices = 4;
 	static VertexFormat vertices[];
 
-	static const int nIndices = 6;
-	static unsigned int indices[];
-
 	static void Init()
 	{
 		layout.AddElement(&position);
@@ -249,6 +192,78 @@ template<RENDERER xRenderer> typename SimplePlane<xRenderer>::VertexFormat Simpl
 	{ { -1.0f, 1.0f }, { 0.0f, 1.0f } }, //tl
 	{ {  1.0f, -1.0f }, { 1.0f, 0.0f } }, //br
 	{ { 1.0f, 1.0f }, { 1.0f, 1.0f } } //tr
+};
+
+
+template<RENDERER xRenderer>
+struct TexturedBox
+{
+	typename MyTypes<xRenderer>::Model* model;
+	typename MyTypes<xRenderer>::VertexBuffer* vertexBuffer;
+	typename MyTypes<xRenderer>::IndexBuffer* indexBuffer;
+
+	TexturedBox() {}
+
+	static FormatDesc<float> position;
+	static FormatDesc<float> uv;
+	static Layout layout;
+
+	struct VertexFormat
+	{
+		zls::math::vec3 pos;
+		zls::math::vec2 uv;
+	};
+
+	static const int nVertices = 8;
+	static VertexFormat vertices[];
+
+	static const int nIndices = 6 /*6 plane*/ * 2 /*2 triangle/side*/ * 3 /*3 index/triangle*/;
+	static unsigned int indices[];
+
+	static void Init()
+	{
+		layout.AddElement(&position);
+		layout.AddElement(&uv);
+		layout.Update();
+	}
+};
+
+template<RENDERER xRenderer> FormatDesc<float> TexturedBox<xRenderer>::position(3, "pos", FDS_POSITION, 0, 0, 0);
+template<RENDERER xRenderer> FormatDesc<float> TexturedBox<xRenderer>::uv(2, "uv", FDS_TEXCOORD, 0, 0, position.GetEndOffset());
+template<RENDERER xRenderer> Layout TexturedBox<xRenderer>::layout;
+template<RENDERER xRenderer> typename TexturedBox<xRenderer>::VertexFormat TexturedBox<xRenderer>::vertices[nVertices] =
+{
+	{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f } }, //0
+	{ { +0.5f, -0.5f, -0.5f }, { 2.0f, 0.0f } }, //1
+	{ { +0.5f, +0.5f, -0.5f }, { 2.0f, 2.0f } }, //2
+	{ { -0.5f, +0.5f, -0.5f }, { 0.0f, 2.0f } }, //3
+	{ { -0.5f, -0.5f, +0.5f }, { 0.0f, 0.0f } }, //4
+	{ { +0.5f, -0.5f, +0.5f }, { 2.0f, 0.0f } }, //5
+	{ { +0.5f, +0.5f, +0.5f }, { 2.0f, 2.0f } }, //6
+	{ { -0.5f, +0.5f, +0.5f }, { 0.0f, 2.0f } }, //7
+};
+
+template<RENDERER xRenderer> unsigned int TexturedBox<xRenderer>::indices[nIndices] =
+{
+	2, 0, 1,
+	0, 2, 3,
+	5, 4, 6,
+	6, 4, 7,
+	6, 1, 5,
+	2, 1, 6,
+	7, 0, 3,
+	4, 0, 7,
+	6, 7, 2,
+	7, 3, 2,
+	4, 1, 0,
+	5, 1, 4,
+};
+
+struct _declspec(align(8)) VS_Constant
+{
+	zls::math::mat4 proj;
+	zls::math::mat4 view;
+	zls::math::mat4 model;
 };
 
 template<RENDERER xRenderer>
@@ -269,12 +284,12 @@ protected:
 protected:
 	PRenderer ir;
 
-	PVertexShader vs, simplePlaneVS;
-	PPixelShader fs, simplePlaneFS;
-	PShaderProgram simple, simplePlaneProgram;
-	PModel quad;
+	PVertexShader texturedBoxVS, simplePlaneVS;
+	PPixelShader texturedBoxFS, simplePlaneFS;
+	PShaderProgram texturedBoxProgram, simplePlaneProgram;
 
 	SimplePlane<xRenderer> simplePlane;
+	TexturedBox<xRenderer> texturedBox;
 
 	PVertexBuffer vertBuffer, colorBuffer;
 	PIndexBuffer indexBuffer;
@@ -326,6 +341,7 @@ public:
 		ir->SetClearColor(0.0f, 0.2f, 0.4f, 1.0f);
 
 		simplePlane.Init();
+		texturedBox.Init();
 
 		InitShaders();
 		InitGeometry();
@@ -392,9 +408,10 @@ public:
 		simplePlaneFS = ir->CreatePixelShaderFromSourceFile("Data/shaders/plane.fs");
 		simplePlaneProgram = ir->CreateShaderProgram(simplePlaneVS, simplePlaneFS, &simplePlane.layout);
 
-		vs = ir->CreateVertexShaderFromSourceFile("Data/Shaders/simple.vs");
-		fs = ir->CreatePixelShaderFromSourceFile("Data/Shaders/simple.fs");
-		simple = ir->CreateShaderProgram(vs, fs, &myLayout);
+		texturedBoxVS = ir->CreateVertexShaderFromSourceFile("Data/Shaders/simple.vs");
+		texturedBoxFS = ir->CreatePixelShaderFromSourceFile("Data/Shaders/simple.fs");
+		texturedBoxProgram = ir->CreateShaderProgram(texturedBoxVS, texturedBoxFS, &texturedBox.layout);
+		
 		constantBuffer = ir->CreateConstantBuffer(sizeof(VS_Constant));
 	}
 
@@ -405,31 +422,31 @@ public:
 		ir->CreateVertexBuffer(0, simplePlane.nVertices, simplePlane.vertices);
 		ir->UnbindModels();
 		
-		quad = ir->CreateModel(&myLayout);
-		ir->BindModel(quad);
-		vertBuffer = ir->CreateVertexBuffer(0, nVertices, v_buffer);
-		indexBuffer = ir->CreateIndexBuffer(nIndices, i_buffer);
+		texturedBox.model = ir->CreateModel(&texturedBox.layout);
+		ir->BindModel(texturedBox.model);
+		ir->CreateVertexBuffer(0, texturedBox.nVertices, texturedBox.vertices);
+		ir->CreateIndexBuffer(texturedBox.nIndices, texturedBox.indices);
 		ir->UnbindModels();
 	}
 
 	void PreRender()
 	{
 		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
-		ir->ActivateProgram(simple);
+		ir->ActivateProgram(texturedBoxProgram);
 		float t = (GetTickCount() % 10000) / 10000.0f;
 		SetUniforms(t, true);
 
-		ir->BindModel(quad);
+		ir->BindModel(texturedBox.model);
 		ir->ActivateTexture(texture);
-		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+		ir->RenderIndexed<PT_TRIANGLE_LIST>(texturedBox.nIndices);
 
 		cb.model.SetTranslate(0.0f, -1.0f, 0.0f);
 		ir->UpdateConstantBuffer(constantBuffer, &cb);
-		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+		ir->RenderIndexed<PT_TRIANGLE_LIST>(texturedBox.nIndices);
 
 		cb.model.SetTranslate(0.0f, +1.0f, 0.0f);
 		ir->UpdateConstantBuffer(constantBuffer, &cb);
-		ir->RenderIndexed<PT_TRIANGLE_LIST>(nIndices);
+		ir->RenderIndexed<PT_TRIANGLE_LIST>(texturedBox.nIndices);
 
 		ir->UnbindModels();
 		ir->DeactivatePrograms();
@@ -478,7 +495,7 @@ public:
 		cb.model = trn * rot;
 
 		ir->UpdateConstantBuffer(constantBuffer, &cb);
-		ir->ActualizeConstantBuffer(constantBuffer, simple, "BlockName");
+		ir->ActualizeConstantBuffer(constantBuffer, texturedBoxProgram, "BlockName");
 	}
 
 	void InitTexture()
@@ -585,11 +602,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 	}
 
-	myLayout.AddElement(&posDescp);
-	myLayout.AddElement(&colorDescp);
-	myLayout.AddElement(&texDescp);
-	myLayout.Update();
-	
 	InitGraphics();
 
 	//Matrices

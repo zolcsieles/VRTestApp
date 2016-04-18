@@ -376,7 +376,7 @@ public:
 private:
 	void AttachLayoutToProgram(Layout* layout, GLShaderProgram* prog)
 	{
-		for (int i = 0; i < layout->GetElemCount(); ++i)
+		for (size_t i = 0; i < layout->GetElemCount(); ++i)
 		{
 			FormatDescBase* fdb = layout->GetElem(i);
 			const char* paramName = fdb->GetParamName();

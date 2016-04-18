@@ -8,32 +8,26 @@ cbuffer InputBuffer
 struct Input
 {
 	float3 pos : POSITION;
-	float3 colors : COLOR;
-	float2 tc : TEXCOORD;
+	float2 uv : TEXCOORD;
 };
 
 struct TResult
 {
 	float4 Position : SV_POSITION;
-	float3 fPosition : POSITION;
-	float2 uv : TEXCOORD;
+	float3 _position : POSITION;
+	float2 _uv : TEXCOORD;
 };
 
 TResult main(Input inp)
 {
 	TResult ret;
+	ret._uv = inp.uv;
 
 	float4x4 mv = mul(view, model);
-	float4x4 mvp = mul(proj, mv);
+	float4 temp_position = mul(mv, float4(inp.pos, 1.0f));
 
-	float near = 1.0f;
-	float far = 10.0f;
-	float horiz = 1.0f;
-	float vert = 1.0f;
-
-	ret.fPosition = mul(mv, float4(inp.pos, 1.0f)).xyz;
-	ret.Position = mul(mvp, float4(inp.pos, 1.0f));
-	ret.uv = inp.tc;
+	ret._position = mul(mv, float4(inp.pos, 1.0f)).xyz;
+	ret.Position = mul(proj, temp_position);
 
 	return ret;
 }

@@ -6,13 +6,13 @@ SamplerState texState;
 struct TResult
 {
 	float4 Position : SV_POSITION;
-	float3 fPosition : POSITION;
-	float2 uv : TEXCOORD;
+	float3 _position : POSITION;
+	float2 _uv : TEXCOORD;
 };
 
 float4 main(TResult inp) : SV_TARGET
 {
 	float3 lightDir = normalize(float3(1.0, 1.0, 1.0));
-	float3 normalEye = normalize(cross(ddy_coarse(inp.fPosition), ddx_coarse(inp.fPosition)));
-	return tex.Sample(texState, inp.uv) * saturate(dot(lightDir,normalEye));
+	float3 normalEye = normalize(cross(ddy_coarse(inp._position), ddx_coarse(inp._position)));
+	return tex.Sample(texState, inp._uv) * saturate(dot(lightDir,normalEye));
 }

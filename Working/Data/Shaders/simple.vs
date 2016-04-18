@@ -7,26 +7,18 @@ uniform BlockName {
 } Block;
 
 layout(location = 0) in vec3 pos;
-layout(location = 1) in vec3 colors;
-layout(location = 2) in vec2 tc;
-out vec2 uv;
-out vec3 fPosition;
-out vec3 tcolor;
+layout(location = 1) in vec2 uv;
+
+out vec2 _uv;
+out vec3 _position;
 
 void main()
 {
-	float near = 1.0f;
-	float far = 10.0f;
-	float horiz = 1.0f;
-	float vert = 1.0f;
+	_uv = vec2(uv.x, 1.0 - uv.y);
 
-	vec3 dlight = {-1.0, -1.0, -1.0};
+	mat4x4 mv = Block.view * Block.model;
+	vec4 temp_position = mv * vec4(pos, 1.0);
 
-	mat4x4 mv = (Block.view * Block.model);
-
-	fPosition = (mv * vec4(pos, 1.0)).xyz;
-	gl_Position = Block.proj * mv * vec4(pos, 1.0);
-
-	uv = vec2(tc.x, 1.0-tc.y);
-	tcolor = colors;
+	_position = temp_position.xyz;
+	gl_Position = Block.proj * temp_position;
 }

@@ -291,7 +291,6 @@ public:
 	void BindModel(D3DModel* model)
 	{
 		actualModel = model;
-
 	}
 
 	D3DBuffer* CreateVertexBuffer(unsigned int slot, int nVertices, const void* vertData)
@@ -442,20 +441,20 @@ public:
 		//vs_4_0_level_9_1
 		D3DCompileFromFile(fileName.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "vs_5_0", D3DCOMPILE_ENABLE_STRICTNESS, 0, &blob, &errorBlob);
 
-		if (blob == nullptr)
-		{
-			ErrorExit("D3D VertexShader Log - file not found: %s\n", fName);
-		}
-
 		if (errorBlob == nullptr)
 		{
+			if (blob == nullptr)
+			{
+				ErrorExit("D3D VertexShader Log - file not found: %s\n", fName);
+			}
+
 			ID3D11VertexShader* shader;
 			dev->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &shader);
 			ptr = new D3DVertexShader(shader, blob);
 		}
 		else
 		{
-			Warning("D3D VertexShader Log: %s\n", errorBlob->GetBufferPointer());
+			ErrorExit("D3D VertexShader Log: %s\n", errorBlob->GetBufferPointer());
 			errorBlob->Release();
 		}
 
@@ -478,20 +477,20 @@ public:
 		//ps_4_0_level_9_1
 		D3DCompileFromFile(fileName.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, "main", "ps_5_0", D3DCOMPILE_ENABLE_STRICTNESS, 0, &blob, &errorBlob);
 
-		if (blob == nullptr)
-		{
-			ErrorExit("D3D PixelShader Log - file not found: %s\n", fName);
-		}
-
 		if (errorBlob == nullptr)
 		{
+			if (blob == nullptr)
+			{
+				ErrorExit("D3D PixelShader Log - file not found: %s\n", fName);
+			}
+
 			ID3D11PixelShader* shader;
 			dev->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, &shader);
 			ptr = new D3DPixelShader(shader, blob);
 		}
 		else
 		{
-			Warning("D3D PixelShader Log: %s\n", errorBlob->GetBufferPointer());
+			ErrorExit("D3D PixelShader Log: %s\n", errorBlob->GetBufferPointer());
 			errorBlob->Release();
 		}
 
