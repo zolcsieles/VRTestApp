@@ -20,6 +20,12 @@ namespace zls {
 			Vec2(const T _x, const T _y) : x(_x), y(_y)
 			{
 			}
+
+			Vec2 operator +=(Vec2& other)
+			{
+				x += other.x;
+				y += other.y;
+			}
 		};
 
 		template<typename T>
@@ -51,6 +57,14 @@ namespace zls {
 			T operator*(const Vec3& other) const
 			{
 				return (x*other.x + y*other.y + z*other.z);
+			}
+
+			Vec3 operator +=(const Vec3& other)
+			{
+				x += other.x;
+				y += other.y;
+				z += other.z;
+				return *this;
 			}
 
 			Vec3 cross(const Vec3& other) const

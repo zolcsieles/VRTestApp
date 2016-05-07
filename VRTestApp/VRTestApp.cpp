@@ -39,6 +39,55 @@ bool runing = true;
 int dispWidth = 960;
 int dispHeight = 540;
 
+class Actor
+{
+private:
+	typedef float vptype;
+	typedef zls::math::Vec2<vptype> vec2;
+	typedef zls::math::Vec3<vptype> vec3;
+
+	zls::math::Vec3<vptype> mPosition;
+	zls::math::Vec2<vptype> mViewAngles;
+
+	zls::math::Vec3<vptype> mDirection;
+
+public:
+	Actor(vptype _height) : mPosition(0, 0, _height), mViewAngles(0, 0)
+	{}
+
+	Actor(vec3& _position, vec2& _viewangles) : mPosition(_position), mViewAngles(_viewangles)
+	{}
+
+	void SetViewAngles(vec2& _viewangles)
+	{
+		mViewAngles = _viewangles;
+	}
+
+	void AddViewAngles(vec2& _viewangles)
+	{
+		mViewAngles += _viewangles;
+	}
+
+	void SetPosition(vec3& _position)
+	{
+		mPosition = _position;
+	}
+
+	void AddPosition(vec3& _position)
+	{
+		mPosition += _position;
+	}
+
+	vptype GetPositionX() { return mPosition.x; }
+	vptype GetPositionY() { return mPosition.y; }
+	vptype GetPositionZ() { return mPosition.z; }
+
+};
+
+zls::math::vec3 startPosition(0.0, 1.70f, -3.6f);
+zls::math::vec2 startAngles(0.0, 0.0f);
+Actor player(startPosition, startAngles);
+
 class TGAFile
 {
 	char* buffer;
@@ -483,7 +532,7 @@ public:
 		float x = cos(-rad)*dist;
 		float y = sin(-rad)*dist;
 		const float eyeDistance = 1.5*0;
-		zls::math::vec3 eyePos(0.0f, 0.0f, sub ? -2.0f : -3.6f-x), targetPos(0, 0.0f, 0), upDir(0.0f, 1.0f, 0.0f);
+		zls::math::vec3 eyePos(player.GetPositionX(), player.GetPositionY(), player.GetPositionZ()), targetPos(0, 0.0f, 0), upDir(0.0f, 1.0f, 0.0f);
 		cb.view.SetViewLookatRH(eyePos, targetPos, upDir);
 		
 		zls::math::mat4x4 rot, trn;
@@ -530,9 +579,43 @@ void Events(float dt)
 	if (SDL_PollEvent(&e))
 	{
 		if (e.type == SDL_QUIT) runing = false;
-		if (e.type == SDL_KEYDOWN) pressed[e.key.keysym.scancode] = true;
-		if (e.type == SDL_KEYUP) pressed[e.key.keysym.scancode] = false;
+		if (e.type == SDL_KEYDOWN)
+			pressed[e.key.keysym.scancode] = true;
+		if (e.type == SDL_KEYUP)
+			pressed[e.key.keysym.scancode] = false;
 	}
+
+	zls::math::vec3 position_add(0, 0, 0);
+	float speed = 1.0 * dt;
+
+	if (pressed[SDL_SCANCODE_D])
+	{
+		position_add.x += speed;
+	}
+	if (pressed[SDL_SCANCODE_A])
+	{
+		position_add.x -= speed;
+	}
+
+	if (pressed[SDL_SCANCODE_W])
+	{
+		position_add.z += speed;
+	}
+	if (pressed[SDL_SCANCODE_S])
+	{
+		position_add.z -= speed;
+	}
+
+	if (pressed[SDL_SCANCODE_R])
+	{
+		position_add.y += speed;
+	}
+	if (pressed[SDL_SCANCODE_F])
+	{
+		position_add.y -= speed;
+	}
+
+	player.AddPosition(position_add);
 }
 
 void InitGraphics()
@@ -579,14 +662,15 @@ int _tmain(int argc, _TCHAR* argv[])
 	gxdrv.push_back(GX_D3D);
 #endif
 
-	const int fullWidth = 1440;
-	const int padding = 50;
-	int dw = dispWidth + padding;
-	int x = (fullWidth>>1)-(gxdrv.size()&1)*(dispWidth>>1)-(dw*(gxdrv.size()));
+	const int fullWidth = 1920;
+	const int padding = 10;
 
+	dispWidth = (fullWidth - padding*(gxdrv.size() - 1)) / gxdrv.size();
+	
+	int dw = dispWidth+padding;
+	int x = 0;
 	for (std::vector<GxDriver>::iterator it = gxdrv.begin(); it != gxdrv.end(); ++it)
 	{
-		x += dw;
 		std::string WindowText("RenderWindow");
 
 		switch (*it)
@@ -596,16 +680,16 @@ int _tmain(int argc, _TCHAR* argv[])
 		default: break;
 		}
 
-		if (!initGX(WindowText.c_str(), x, PosCenterDisplay, dispWidth, dispHeight, *it))
+		if (!initGX(WindowText.c_str(), x, 50, dispWidth, dispHeight, *it))
 		{
 			ErrorExit("Unable to initialize GX system!\n");
 		}
+		x += dw;
 	}
 
 	InitGraphics();
 
 	//Matrices
-
 	float tick0, tick1, dt;
 	tick0 = tick1 = GetTickCount() * (1.0f / 1000.0f);
 	while (runing)
