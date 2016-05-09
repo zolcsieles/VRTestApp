@@ -380,7 +380,7 @@ public:
 	unsigned char* GetScreenShot(unsigned int& _Width, unsigned int& _Height)
 	{
 		unsigned char* ptr = new unsigned char[mWidth*mHeight*4];
-		gl::glReadBuffer(GL_AUX2);
+		gl::glReadBuffer(GL_FRONT);
 		gl::glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		gl::glReadPixels(0, 0, mWidth, mHeight, GL_RGB, GL_UNSIGNED_BYTE, ptr);
 		_Width = mWidth;

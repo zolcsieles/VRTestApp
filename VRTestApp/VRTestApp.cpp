@@ -38,7 +38,7 @@
 bool runing = true;
 int dispWidth = 960;
 int dispHeight = 540;
-int screenShot = 0;
+bool screenShot = false;
 
 unsigned long actualTickCount = 0;
 
@@ -688,17 +688,10 @@ void Events(float dt)
 		position_add.y -= speed;
 	}
 
-	if (pressed[SDL_SCANCODE_SPACE] && screenShot == 0)
+	screenShot = false;
+	if (pressed[SDL_SCANCODE_SPACE])
 	{
-		screenShot = 1;
-	}
-	else if (!pressed[SDL_SCANCODE_SPACE] && screenShot == 2)
-	{
-		screenShot = 0;
-	}
-	else if (screenShot == 1)
-	{
-		screenShot = 2;
+		screenShot = true;
 	}
 
 	player.AddPosition(position_add);
@@ -720,14 +713,14 @@ void monoRenderFrame()
 {
 #if defined(USE_GX_OPENGL)
 	glAppWindow.monoRenderFrame();
-	if (screenShot == 1)
+	if (screenShot)
 	{
 		glAppWindow.ScreenShot("opengl.tga");
 	}
 #endif
 #if defined(USE_GX_D3D11)
 	d3dAppWindow.monoRenderFrame();
-	if (screenShot == 1)
+	if (screenShot)
 	{
 		d3dAppWindow.ScreenShot("direct3d.tga");
 	}
@@ -786,7 +779,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	//Matrices
 	float tick0, tick1, dt;
 	tick0 = tick1 = GetTickCount() * (1.0f / 1000.0f);
-	screenShot = 0;
 	while (runing)
 	{
 		actualTickCount = GetTickCount();
