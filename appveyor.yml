@@ -19,6 +19,7 @@ configuration:
 
 install:
  - cmake --version
+ - git submodule update --init --recursive -q
 
 before_build:
  - pushd .
