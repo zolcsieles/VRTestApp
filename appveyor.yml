@@ -25,8 +25,8 @@ before_build:
  - echo "Starting build..."
 
 build:
- project c:\!BuildOSVR\VRTestApp\VRTestApp.sln
-# verbosity: detailed
+ project VRTestApp.sln
+ verbosity: detailed
 
 deploy:
 - provider: GitHub
