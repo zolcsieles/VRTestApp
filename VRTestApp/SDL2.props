@@ -2,7 +2,7 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
-    <SDL2_Dir>C:\!BuildOSVR\libs\SDL2-2.0.4</SDL2_Dir>
+    <SDL2_Dir>$(SolutionDir)\libs\SDL2-2.0.4</SDL2_Dir>
   </PropertyGroup>
   <PropertyGroup>
     <IncludePath>$(SDL2_Dir)\include;$(IncludePath)</IncludePath>
