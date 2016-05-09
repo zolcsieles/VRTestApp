@@ -615,27 +615,21 @@ public:
 				unsigned int subresid = D3D11CalcSubresource(0, 0, 0);
 				devcon->Map(pTemp, subresid, D3D11_MAP_READ_WRITE, 0, &res);
 
-				const int width = descTemp.Width +4;
-				const int pitch = width;
+				const int width = descTemp.Width;
+				const int widthD16 = (width + 15) & ~15;  //(((width + 15) >> 4) << 4);
+				const int height = descTemp.Height;
+				const int pitch = width * 4;
+				const int pitchD16 = widthD16 * 4;
 				const unsigned char* src = (unsigned char*)res.pData;
 				unsigned char* dst = ptr;
 				for (unsigned int i = 0; i < descTemp.Height; ++i)
 				{
-					unsigned char* pd = dst;
-					const unsigned char* ps = src;
-					for (unsigned int j = 0; j <= width; ++j)
-					{
-						pd[0] = ps[0];
-						pd[1] = ps[1];
-						pd[2] = ps[2];
-						pd += 3;
-						ps += 4;
-					}
-					src += pitch*4;
-					dst += pitch*3;
+					memcpy(dst, src, pitch);
+					src += pitchD16;
+					dst += pitch;
 				}
 				_Width = width;
-				_Height = descTemp.Height;
+				_Height = height;
 			}
 		}
 		

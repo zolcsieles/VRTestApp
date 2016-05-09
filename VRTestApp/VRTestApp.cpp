@@ -144,9 +144,9 @@ class TGAFile
 			unsigned char tmp;
 			tmp = ptr[0];
 			ptr[0] = ptr[2];
-			//ptr[1] = ptr[1];
 			ptr[2] = tmp;
-			ptr += 3;
+			ptr[3] = 255-ptr[3]; //invert alpha
+			ptr += 4;
 		}
 	}
 
@@ -212,9 +212,9 @@ public:
 
 		tgaHeader->is_xOrigin = 0;
 		tgaHeader->is_yOrigin = 0;
-		tgaHeader->is_iWidth = w+1;
+		tgaHeader->is_iWidth = w;
 		tgaHeader->is_iHeight = h;
-		tgaHeader->is_iBPP = 24; //24 or 32
+		tgaHeader->is_iBPP = 32;
 		tgaHeader->is_iDesc = (1<<5)*0;
 
 		imageptr = ptr;
@@ -230,7 +230,8 @@ public:
 			tgaHeader->is_iDesc = (1 << 5) * ((rendererType == D3D) ? 1 : 0);
 		}
 		fwrite(tgaHeader, sizeof(TGAHeader), 1, f);
-		fwrite(imageptr, GetPixelCount()*3, 1, f);
+		unsigned int size = GetPixelCount();
+		fwrite(imageptr, 4, size, f);
 		fclose(f);
 	}
 
