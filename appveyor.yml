@@ -21,10 +21,12 @@ install:
  - cmake --version
 
 before_build:
+ - pushd .
  - echo "Listing OpenVR libdir..."
  - cd C:\!BuildOSVR\VRTestApp\libs
  - dir /s /b
  - echo "Starting build..."
+ - popd
 
 build:
  project c:\!BuildOSVR\VRTestApp\VRTestApp.sln
