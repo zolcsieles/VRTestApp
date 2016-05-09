@@ -115,6 +115,7 @@ protected:
 	ID3D11DeviceContext* devcon;
 
 	D3DRenderTarget* defaultRT;
+
 	/**/
 //	ID3D11RenderTargetView* rtv;
 //	ID3D11Texture2D* depthStencilBuffer;
@@ -586,6 +587,59 @@ public:
 		//Bind the view
 		defaultRT = new D3DRenderTarget(nullptr, nullptr, nullptr, rtv, wnd->Width * 4, depthStencilBuffer, depthStencilView, depthStencilState);
 		SetRenderTarget(defaultRT);
+	}
+
+	unsigned char* GetScreenShot(unsigned int& _Width, unsigned int& _Height)
+	{
+		unsigned char* ptr = nullptr;
+		ID3D11Texture2D* pBackBuffer;
+		HRESULT hr = swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
+
+		if (pBackBuffer)
+		{
+
+			ID3D11Texture2D* pTemp;
+			D3D11_TEXTURE2D_DESC descTemp;
+			pBackBuffer->GetDesc(&descTemp);
+			descTemp.BindFlags = 0;
+			descTemp.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
+			descTemp.Usage = D3D11_USAGE_STAGING;
+
+			ptr = new unsigned char[descTemp.Width * descTemp.Height * 4];
+
+			dev->CreateTexture2D(&descTemp, NULL, &pTemp);
+			if (pTemp)
+			{
+				devcon->CopyResource(pTemp, pBackBuffer);
+				D3D11_MAPPED_SUBRESOURCE res;
+				unsigned int subresid = D3D11CalcSubresource(0, 0, 0);
+				devcon->Map(pTemp, subresid, D3D11_MAP_READ_WRITE, 0, &res);
+
+				const int width = descTemp.Width +4;
+				const int pitch = width;
+				const unsigned char* src = (unsigned char*)res.pData;
+				unsigned char* dst = ptr;
+				for (unsigned int i = 0; i < descTemp.Height; ++i)
+				{
+					unsigned char* pd = dst;
+					const unsigned char* ps = src;
+					for (unsigned int j = 0; j <= width; ++j)
+					{
+						pd[0] = ps[0];
+						pd[1] = ps[1];
+						pd[2] = ps[2];
+						pd += 3;
+						ps += 4;
+					}
+					src += pitch*4;
+					dst += pitch*3;
+				}
+				_Width = width;
+				_Height = descTemp.Height;
+			}
+		}
+		
+		return ptr;
 	}
 
 private:

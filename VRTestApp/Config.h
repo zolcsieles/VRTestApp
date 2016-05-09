@@ -6,7 +6,9 @@
 #define __OGL 2
 #define __ALL (__D3D11 | __OGL)
 
- //#define USE_GX __D3D11
+#define WITH_DIFF
+
+// #define USE_GX __D3D11
 // #define USE_GX __OGL
  #define USE_GX __ALL
 
@@ -23,4 +25,8 @@
 #endif
 #if (USE_GX & __OGL)
 #define USE_GX_OPENGL
+#endif
+
+#if USE_GX != __ALL
+#undef WITH_DIFF
 #endif

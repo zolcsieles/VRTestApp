@@ -38,6 +38,9 @@
 bool runing = true;
 int dispWidth = 960;
 int dispHeight = 540;
+int screenShot = 0;
+
+unsigned long actualTickCount = 0;
 
 class Actor
 {
@@ -132,6 +135,21 @@ class TGAFile
 		}
 	}
 
+	void RotateColorOnly2()
+	{
+		unsigned char* ptr = imageptr;
+		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
+		while (ptr < ptrE)
+		{
+			unsigned char tmp;
+			tmp = ptr[0];
+			ptr[0] = ptr[2];
+			//ptr[1] = ptr[1];
+			ptr[2] = tmp;
+			ptr += 3;
+		}
+	}
+
 	void RotateColorAndFlip()
 	{
 		unsigned char* pimage = imageptr + 4*GetWidth()*(GetHeight()-1);
@@ -181,6 +199,41 @@ public:
 		RotateColor(rendererType);
 	}
 
+	void Set(unsigned char* ptr, unsigned int w, unsigned int h)
+	{
+		tgaHeader = new TGAHeader();
+		tgaHeader->idLength = 0;
+		tgaHeader->colorMapType = 0;
+		tgaHeader->imageType = 2; //0 - no image data, 1 - uncompressed color-mapped, 2 - uncompressed true-color
+		
+		tgaHeader->cms_firstIndex = 0;
+		tgaHeader->cms_colorMapLen = 0;
+		tgaHeader->cms_colorMapEntrySize = 0;
+
+		tgaHeader->is_xOrigin = 0;
+		tgaHeader->is_yOrigin = 0;
+		tgaHeader->is_iWidth = w+1;
+		tgaHeader->is_iHeight = h;
+		tgaHeader->is_iBPP = 24; //24 or 32
+		tgaHeader->is_iDesc = (1<<5)*0;
+
+		imageptr = ptr;
+
+		RotateColorOnly2();
+	}
+
+	void Save(const char* fileName, RENDERER rendererType)
+	{
+		FILE* f;
+		fopen_s(&f, fileName, "wb");
+		{
+			tgaHeader->is_iDesc = (1 << 5) * ((rendererType == D3D) ? 1 : 0);
+		}
+		fwrite(tgaHeader, sizeof(TGAHeader), 1, f);
+		fwrite(imageptr, GetPixelCount()*3, 1, f);
+		fclose(f);
+	}
+
 	unsigned char* GetPtr()
 	{
 		return imageptr;
@@ -199,6 +252,12 @@ public:
 	unsigned int GetPixelCount()
 	{
 		return GetWidth() * GetHeight();
+	}
+
+	~TGAFile()
+	{
+		delete[] tgaHeader;
+		delete[] buffer;
 	}
 };
 
@@ -482,7 +541,7 @@ public:
 	{
 		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
 		ir->ActivateProgram(texturedBoxProgram);
-		float t = (GetTickCount() % 10000) / 10000.0f;
+		float t = (actualTickCount % 10000) / 10000.0f;
 		SetUniforms(t, true);
 
 		ir->BindModel(texturedBox.model);
@@ -538,8 +597,8 @@ public:
 		zls::math::mat4x4 rot, trn;
 
 		rot.SetRotateY_RH(deg);
-		trn.SetRotateX_RH(-deg);
-		rot = rot*trn;
+		//trn.SetRotateX_RH(-deg);
+		//rot = rot*trn;
 		trn.SetTranslate(targetPos.x, targetPos.y, targetPos.z);
 		cb.model = trn * rot;
 
@@ -551,6 +610,20 @@ public:
 	{
 		texture = ir->CreateTexture2D(tga.GetWidth(), tga.GetHeight());
 		ir->UploadTextureData(texture, tga.GetPtr());
+	}
+
+	void ScreenShot(const char* fileName)
+	{
+		unsigned int w, h;
+		unsigned char* ptr = ir->GetScreenShot(w, h);
+		if (ptr != nullptr)
+		{
+			TGAFile tga;
+			tga.Set(ptr, w, h);
+			tga.Save(fileName, xRenderer);
+
+		}
+		delete[] ptr;
 	}
 };
 
@@ -586,7 +659,7 @@ void Events(float dt)
 	}
 
 	zls::math::vec3 position_add(0, 0, 0);
-	float speed = 1.0 * dt;
+	float speed = 1.0f * dt;
 
 	if (pressed[SDL_SCANCODE_D])
 	{
@@ -615,6 +688,19 @@ void Events(float dt)
 		position_add.y -= speed;
 	}
 
+	if (pressed[SDL_SCANCODE_SPACE] && screenShot == 0)
+	{
+		screenShot = 1;
+	}
+	else if (!pressed[SDL_SCANCODE_SPACE] && screenShot == 2)
+	{
+		screenShot = 0;
+	}
+	else if (screenShot == 1)
+	{
+		screenShot = 2;
+	}
+
 	player.AddPosition(position_add);
 }
 
@@ -634,9 +720,17 @@ void monoRenderFrame()
 {
 #if defined(USE_GX_OPENGL)
 	glAppWindow.monoRenderFrame();
+	if (screenShot == 1)
+	{
+		glAppWindow.ScreenShot("opengl.tga");
+	}
 #endif
 #if defined(USE_GX_D3D11)
 	d3dAppWindow.monoRenderFrame();
+	if (screenShot == 1)
+	{
+		d3dAppWindow.ScreenShot("direct3d.tga");
+	}
 #endif
 }
 
@@ -692,10 +786,12 @@ int _tmain(int argc, _TCHAR* argv[])
 	//Matrices
 	float tick0, tick1, dt;
 	tick0 = tick1 = GetTickCount() * (1.0f / 1000.0f);
+	screenShot = 0;
 	while (runing)
 	{
+		actualTickCount = GetTickCount();
 		tick0 = tick1;
-		tick1 = GetTickCount() * (1.0f / 1000.0f);
+		tick1 = actualTickCount * (1.0f / 1000.0f);
 		dt = tick1 - tick0;
 		Events(dt);
 		

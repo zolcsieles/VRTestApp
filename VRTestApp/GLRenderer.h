@@ -84,7 +84,8 @@ class GLRenderer
 private:
 	GLModel* actualModel;
 	GLRenderTarget* actualRenderTarget;
-
+	unsigned int mWidth;
+	unsigned int mHeight;
 
 	void _CreateTexture2D(unsigned int width, unsigned int height, void* data, GLuint* texture, GLuint format = GL_RGBA, GLuint internalFormat = GL_RGBA, GLuint ByteFormat = GL_UNSIGNED_BYTE)
 	{
@@ -371,6 +372,20 @@ public:
 		gl::glCullFace(GL_BACK);
 		gl::glEnable(GL_CULL_FACE);
 		//gl::glDisable(GL_CULL_FACE);
+
+		mWidth = wnd->Width;
+		mHeight = wnd->Height;
+	}
+
+	unsigned char* GetScreenShot(unsigned int& _Width, unsigned int& _Height)
+	{
+		unsigned char* ptr = new unsigned char[mWidth*mHeight*4];
+		gl::glReadBuffer(GL_AUX2);
+		gl::glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		gl::glReadPixels(0, 0, mWidth, mHeight, GL_RGB, GL_UNSIGNED_BYTE, ptr);
+		_Width = mWidth;
+		_Height = mHeight;
+		return ptr;
 	}
 
 private:
