@@ -28,6 +28,10 @@ build:
   project: VRTestApp.sln
   verbosity: detailed
 
+artifacts:
+ - path: Working/*.*
+ - path: $(configuration)/VRTestApp.exe
+
 #deploy:
 #- provider: GitHub
 #  tag: vrtestapp-$(appveyor_build_version)-$(platform)
