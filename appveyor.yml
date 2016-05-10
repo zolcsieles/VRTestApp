@@ -30,8 +30,8 @@ build:
 
 deploy:
 - provider: GitHub
-  tag: vrtestapp-$(appveyor_build_version)
-  release: vrtestapp-$(appveyor_build_version)
+  tag: vrtestapp-$(appveyor_build_version)-$(platform)
+  release: vrtestapp-$(appveyor_build_version)-$(platform)
   description: VR Test App release
   auth_token:
     secure: a1D+fCbSKHqq30FF/sF1hGvs+WHLMrZ2JFKkYS4SdjOOdyve83el5ejZrv5cSYDh
