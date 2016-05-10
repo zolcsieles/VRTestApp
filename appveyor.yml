@@ -28,12 +28,12 @@ build:
   project: VRTestApp.sln
   verbosity: detailed
 
-deploy:
-- provider: GitHub
-  tag: vrtestapp-$(appveyor_build_version)-$(platform)
-  release: vrtestapp-$(appveyor_build_version)-$(platform)
-  description: VR Test App release
-  auth_token:
-    secure: a1D+fCbSKHqq30FF/sF1hGvs+WHLMrZ2JFKkYS4SdjOOdyve83el5ejZrv5cSYDh
-  draft: false
-  prerelease: true
+#deploy:
+#- provider: GitHub
+#  tag: vrtestapp-$(appveyor_build_version)-$(platform)
+#  release: vrtestapp-$(appveyor_build_version)-$(platform)
+#  description: VR Test App release
+#  auth_token:
+#    secure: a1D+fCbSKHqq30FF/sF1hGvs+WHLMrZ2JFKkYS4SdjOOdyve83el5ejZrv5cSYDh
+#  draft: true
+#  prerelease: false
