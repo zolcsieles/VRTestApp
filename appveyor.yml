@@ -29,17 +29,17 @@ build:
   verbosity: detailed
 
 after_build:
- - cmd: mkdir vrtestapp-$(appveyor_build_version)-$(platform)
- - cmd: copy ./Working/SDL2.dll ./vrtestapp-$(appveyor_build_version)-$(platform)/
- - cmd: copy ./Working/openvr_api.dll ./vrtestapp-$(appveyor_build_version)-$(platform)/
- - cmd: copy ./Working/Data ./vrtestapp-$(appveyor_build_version)-$(platform)/
- - cmd: copy ./$(configuration)/VRTestApp.exe ./vrtestapp-$(appveyor_build_version)-$(platform)/
+ - cmd: mkdir deploy
+ - cmd: copy ./Working/SDL2.dll ./deploy/
+ - cmd: copy ./Working/openvr_api.dll ./deploy/
+ - cmd: copy ./Working/Data ./deploy/
+ - cmd: copy ./$(configuration)/VRTestApp.exe ./deploy/
 
 artifacts:
- - path: vrtestapp-$(appveyor_build_version)-$(platform)/*.*
- - path: vrtestapp-$(appveyor_build_version)-$(platform)/Data/*.*
- - path: vrtestapp-$(appveyor_build_version)-$(platform)/Data/Shaders/*.*
- - path: vrtestapp-$(appveyor_build_version)-$(platform)/Data/Textures/*.*
+ - path: deploy/*.*
+ - path: deploy/Data/*.*
+ - path: deploy/Data/Shaders/*.*
+ - path: deploy/Data/Textures/*.*
 
 #deploy:
 #- provider: GitHub
