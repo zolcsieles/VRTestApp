@@ -30,16 +30,16 @@ build:
 
 after_build:
  - cmd: mkdir deploy
- - cmd: copy ./Working/SDL2.dll ./deploy/
- - cmd: copy ./Working/openvr_api.dll ./deploy/
- - cmd: copy ./Working/Data ./deploy/
- - cmd: copy ./$(configuration)/VRTestApp.exe ./deploy/
+ - cmd: copy .\Working\SDL2.dll .\deploy\
+ - cmd: copy .\Working\openvr_api.dll .\deploy\
+ - cmd: copy .\Working\Data .\deploy\
+ - cmd: copy .\$(configuration)\VRTestApp.exe .\deploy\
 
 artifacts:
- - path: deploy/*.*
- - path: deploy/Data/*.*
- - path: deploy/Data/Shaders/*.*
- - path: deploy/Data/Textures/*.*
+ - path: deploy\*.*
+ - path: deploy\Data\*.*
+ - path: deploy\Data\Shaders\*.*
+ - path: deploy\Data\Textures\*.*
 
 #deploy:
 #- provider: GitHub
