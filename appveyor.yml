@@ -35,6 +35,7 @@ after_build:
  - cmd: mkdir deploy
  - cmd: xcopy .\Working\SDL2.dll .\deploy\
  - cmd: xcopy .\Working\openvr_api.dll .\deploy\
+ - cmd: xcopy .\Working\d3dcompiler_47.dll .\deploy\
  - cmd: xcopy .\Working\Data .\deploy\ /i /e
  - cmd: xcopy .\%CONFIGURATION%\VRTestApp.exe .\deploy\
  - cmd: 7z a binary.zip %APPVEYOR_BUILD_FOLDER%\deploy\
