@@ -33,7 +33,7 @@ after_build:
  - cmd: xcopy .\Working\SDL2.dll .\deploy\
  - cmd: xcopy .\Working\openvr_api.dll .\deploy\
  - cmd: xcopy .\Working\Data .\deploy\ /i /e
- - cmd: xcopy .\$(configuration)\VRTestApp.exe .\deploy\
+ - cmd: xcopy .\%CONFIGURATION%\VRTestApp.exe .\deploy\
 
 artifacts:
  - path: deploy\*.*
