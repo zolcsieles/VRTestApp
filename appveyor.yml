@@ -9,7 +9,7 @@ platform:
  - x64
 
 configuration:
- - Debug
+# - Debug
  - Release
 
 #matrix:
@@ -35,4 +35,5 @@ deploy:
   description: VR Test App release
   auth_token:
     secure: a1D+fCbSKHqq30FF/sF1hGvs+WHLMrZ2JFKkYS4SdjOOdyve83el5ejZrv5cSYDh
-  draft: true
+  draft: false
+  prerelease: true
