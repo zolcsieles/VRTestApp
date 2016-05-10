@@ -1,5 +1,7 @@
 version: build.{build}
 
+skip-tags: true
+
 os: Visual Studio 2013
 
 clone_folder: c:\!BuildOSVR\VRTestApp
@@ -26,7 +28,8 @@ before_build:
 
 build:
   project: VRTestApp.sln
-  verbosity: detailed
+  verbosity: normal
+# verbosity: quiet|minimal|normal|detailed
 
 after_build:
  - cmd: mkdir deploy
@@ -34,19 +37,18 @@ after_build:
  - cmd: xcopy .\Working\openvr_api.dll .\deploy\
  - cmd: xcopy .\Working\Data .\deploy\ /i /e
  - cmd: xcopy .\%CONFIGURATION%\VRTestApp.exe .\deploy\
+ - cmd: 7z a binary.zip %APPVEYOR_BUILD_FOLDER%\deploy\
 
 artifacts:
- - path: deploy\*.*
- - path: deploy\Data\*.*
- - path: deploy\Data\Shaders\*.*
- - path: deploy\Data\Textures\*.*
+ - path: binary.zip
 
-#deploy:
-#- provider: GitHub
-#  tag: vrtestapp-$(appveyor_build_version)-$(platform)
-#  release: vrtestapp-$(appveyor_build_version)-$(platform)
-#  description: VR Test App release
-#  auth_token:
-#    secure: a1D+fCbSKHqq30FF/sF1hGvs+WHLMrZ2JFKkYS4SdjOOdyve83el5ejZrv5cSYDh
-#  draft: true
-#  prerelease: false
+deploy:
+- provider: GitHub
+  tag: vrtestapp-$(appveyor_build_version)-$(platform)
+  release: vrtestapp-$(appveyor_build_version)-$(platform)
+  description: VR Test App release
+  auth_token:
+    secure: a1D+fCbSKHqq30FF/sF1hGvs+WHLMrZ2JFKkYS4SdjOOdyve83el5ejZrv5cSYDh
+  artifact: binary.zip
+  draft: false
+  prerelease: true
