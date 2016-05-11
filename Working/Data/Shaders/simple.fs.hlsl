@@ -14,5 +14,5 @@ float4 main(TResult inp) : SV_TARGET
 {
 	float3 lightDir = normalize(float3(1.0, 1.0, 1.0));
 	float3 normalEye = normalize(cross(ddy_coarse(inp._position), ddx_coarse(inp._position)));
-	return float4((tex.Sample(texState, inp._uv) * saturate(dot(lightDir,normalEye))).xyz, 0.0f);
+	return tex.Sample(texState, inp._uv) * saturate(dot(lightDir,normalEye));
 }
