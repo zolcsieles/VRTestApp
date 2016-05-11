@@ -372,6 +372,9 @@ public:
 		gl::glCullFace(GL_BACK);
 		gl::glEnable(GL_CULL_FACE);
 		//gl::glDisable(GL_CULL_FACE);
+		gl::glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		gl::glDisable(GL_BLEND);
+		//gl::glBlendFunc(GL_ONE, GL_ZERO);
 
 		mWidth = wnd->Width;
 		mHeight = wnd->Height;

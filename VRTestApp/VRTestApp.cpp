@@ -714,18 +714,23 @@ void monoRenderFrame()
 {
 #if defined(USE_GX_OPENGL)
 	glAppWindow.monoRenderFrame();
-	if (screenShot)
-	{
-		glAppWindow.ScreenShot("opengl.tga");
-	}
 #endif
 #if defined(USE_GX_D3D11)
 	d3dAppWindow.monoRenderFrame();
+#endif
+}
+
+void ScreenShot()
+{
 	if (screenShot)
 	{
-		d3dAppWindow.ScreenShot("direct3d.tga");
-	}
+#if defined(USE_GX_OPENGL)
+		glAppWindow.ScreenShot("opengl.tga");
 #endif
+#if defined(USE_GX_D3D11)
+		d3dAppWindow.ScreenShot("direct3d.tga");
+#endif
+	}
 }
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -782,7 +787,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	tick0 = tick1 = GetTickCount() * (1.0f / 1000.0f);
 	while (runing)
 	{
-		actualTickCount = GetTickCount();
+		actualTickCount = GetTickCount() << 2;
 		tick0 = tick1;
 		tick1 = actualTickCount * (1.0f / 1000.0f);
 		dt = tick1 - tick0;
@@ -790,6 +795,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		
 		monoRenderFrame();
 		Sleep(5);
+		ScreenShot();
 	}
 
 	return 0;
