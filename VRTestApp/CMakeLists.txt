@@ -27,5 +27,5 @@ target_include_directories(VRTestAppLib PRIVATE ${SDL2_INCLUDE_DIR})
 # VRTestApp program
 add_executable(VRTestApp VRTestApp.cpp stdafx.h stdafx.cpp)
 #target_link_libraries(VRTestApp PRIVATE VRTestAppLib ${SDL2_LIB_DIR}/SDL2.lib)
-target_link_libraries(VRTestApp PRIVATE VRTestAppLib SDL2)
+target_link_libraries(VRTestApp PRIVATE VRTestAppLib SDL2::SDL2 SDL2::SDL2MAIN)
 target_include_directories(VRTestApp PRIVATE ${SDL2_INCLUDE_DIR})
