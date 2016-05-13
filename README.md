@@ -1,6 +1,6 @@
 # VRTestApp
 
-[![license](https://img.shields.io/github/license/zolcsieles/VRTestApp.svg)]()
+[![license](https://img.shields.io/github/license/zolcsieles/VRTestApp.svg?branch=master)]()
 
 ## Build & Test informations:
 
