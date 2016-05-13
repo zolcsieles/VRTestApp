@@ -8,21 +8,25 @@ namespace zls
 	{
 		void ReadFile(const char* fileName, char** content, int* len)
 		{
-			FILE* f;
+			FILE* f = nullptr;
 			fopen_s(&f, fileName, "rb");
 
 			if (!f)
+			{
 				ErrorExit("File not found: %s\n", fileName);
+			}
+			else
+			{
+				fseek(f, 0, SEEK_END);
+				*len = (int)ftell(f);
+				fseek(f, 0, SEEK_SET);
 
-			fseek(f, 0, SEEK_END);
-			*len = (int)ftell(f);
-			fseek(f, 0, SEEK_SET);
+				*content = new char[*len + 1];
+				fread(*content, sizeof(char), *len, f);
+				(*content)[*len] = '\0';
 
-			*content = new char[*len + 1];
-			fread(*content, sizeof(char), *len, f);
-			(*content)[*len] = '\0';
-
-			fclose(f);
+				fclose(f);
+			}
 		}
 	}
 }

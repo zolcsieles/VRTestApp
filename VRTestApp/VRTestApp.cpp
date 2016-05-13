@@ -40,7 +40,7 @@ int dispWidth = 960;
 int dispHeight = 540;
 bool screenShot = false;
 
-unsigned long actualTickCount = 0;
+unsigned long long actualTickCount = 0;
 
 class Actor
 {
@@ -224,15 +224,18 @@ public:
 
 	void Save(const char* fileName, RENDERER rendererType)
 	{
-		FILE* f;
+		FILE* f = nullptr;
 		fopen_s(&f, fileName, "wb");
+
+		tgaHeader->is_iDesc = (1 << 5) * ((rendererType == D3D) ? 1 : 0);
+
+		if (f)
 		{
-			tgaHeader->is_iDesc = (1 << 5) * ((rendererType == D3D) ? 1 : 0);
+			fwrite(tgaHeader, sizeof(TGAHeader), 1, f);
+			unsigned int size = GetPixelCount();
+			fwrite(imageptr, 4, size, f);
+			fclose(f);
 		}
-		fwrite(tgaHeader, sizeof(TGAHeader), 1, f);
-		unsigned int size = GetPixelCount();
-		fwrite(imageptr, 4, size, f);
-		fclose(f);
 	}
 
 	unsigned char* GetPtr()
@@ -542,7 +545,7 @@ public:
 	{
 		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
 		ir->ActivateProgram(texturedBoxProgram);
-		float t = (actualTickCount % 10000) / 10000.0f;
+		float t = (actualTickCount % 10000ULL) / 10000.0f;
 		SetUniforms(t, true);
 
 		ir->BindModel(texturedBox.model);
@@ -785,10 +788,10 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	//Matrices
 	float tick0, tick1, dt;
-	tick0 = tick1 = GetTickCount() * (1.0f / 1000.0f);
+	tick0 = tick1 = GetTickCount64() * (1.0f / 1000.0f);
 	while (runing)
 	{
-		actualTickCount = GetTickCount() << 2;
+		actualTickCount = GetTickCount64() << 2;
 		tick0 = tick1;
 		tick1 = actualTickCount * (1.0f / 1000.0f);
 		dt = tick1 - tick0;

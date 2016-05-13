@@ -223,7 +223,6 @@ protected:
 		if (sampler != nullptr)
 		{
 			//=-=-=-=- Not req?
-			HRESULT hr;
 			D3D11_SAMPLER_DESC sDesc;
 			ZeroMemory(&sDesc, sizeof(sDesc));
 			sDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
@@ -652,7 +651,7 @@ private:
 		dev->CreateInputLayout(inputElemDesc, elemCount, vs->GetBlob()->GetBufferPointer(), vs->GetBlob()->GetBufferSize(), &ilay);
 		devcon->IASetInputLayout(ilay);
 		vs->SetInputLayout(ilay);
-		delete inputElemDesc;
+		delete[] inputElemDesc;
 	}
 
 	float* GetClearColor()
