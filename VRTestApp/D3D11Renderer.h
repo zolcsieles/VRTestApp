@@ -52,6 +52,10 @@ public:
 
 public:
 	D3DTexture() : mTexture(nullptr), mShaderResourceView(nullptr)
+#if defined USE_SAMPLER_STATE
+		, mSamplerState(nullptr)
+#endif
+		, mBytePerRow(0)
 	{}
 
 	D3DTexture(ID3D11Texture2D* _texture, ID3D11ShaderResourceView* _ShaderResourceView, ID3D11SamplerState* _SamplerState, unsigned int _bytePerRow) 
@@ -72,7 +76,7 @@ struct D3DRenderTarget : public D3DTexture
 	ID3D11DepthStencilView* mDepthStencilView;
 	ID3D11DepthStencilState* mDepthStencilState;
 
-	D3DRenderTarget() : D3DTexture()
+	D3DRenderTarget() : D3DTexture(), mRenderTargetView(nullptr), mDepthTexture(nullptr), mDepthStencilView(nullptr), mDepthStencilState(nullptr)
 	{
 	}
 
@@ -238,8 +242,9 @@ protected:
 	}
 
 public:
-	D3DRenderer() : swapchain(nullptr), dev(nullptr), devcon(nullptr), defaultRT(nullptr)
+	D3DRenderer() : swapchain(nullptr), dev(nullptr), devcon(nullptr), defaultRT(nullptr), actualModel(nullptr), actualRenderTarget(nullptr)
 	{
+		SetClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	}
 
 	void SetClearColor(float r, float g, float b, float a)
@@ -255,7 +260,7 @@ public:
 		if (bufferMask & COLOR_BUFFER)
 		devcon->ClearRenderTargetView(actualRenderTarget->mRenderTargetView, mClearColor);
 		if (bufferMask & (DEPTH_BUFFER | STENCIL_BUFFER))
-			devcon->ClearDepthStencilView(actualRenderTarget->mDepthStencilView, (bufferMask & DEPTH_BUFFER ? D3D11_CLEAR_DEPTH : 0) | (bufferMask & STENCIL_BUFFER ? D3D11_CLEAR_STENCIL : 0), 1.0f, 0);
+			devcon->ClearDepthStencilView(actualRenderTarget->mDepthStencilView, ((bufferMask & DEPTH_BUFFER) ? D3D11_CLEAR_DEPTH : 0) | ((bufferMask & STENCIL_BUFFER) ? D3D11_CLEAR_STENCIL : 0), 1.0f, 0);
 	}
 
 	void SetViewport(int x, int y, int width, int height)
@@ -652,11 +657,6 @@ private:
 		devcon->IASetInputLayout(ilay);
 		vs->SetInputLayout(ilay);
 		delete[] inputElemDesc;
-	}
-
-	float* GetClearColor()
-	{
-		return mClearColor;
 	}
 };
 

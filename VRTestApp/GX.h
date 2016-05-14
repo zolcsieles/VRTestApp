@@ -16,13 +16,12 @@ struct Window
 {
 	unsigned int Width;
 	unsigned int Height;
-
-	Window() : window(nullptr), renderer(nullptr)
-	{
-	}
-
 	SDL_Window* window;
 	SDL_Renderer* renderer;
+
+	Window() : window(nullptr), renderer(nullptr), Width(0), Height(0)
+	{
+	}
 };
 
 enum GxDriver {

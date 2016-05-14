@@ -11,6 +11,9 @@ namespace zls
 			FILE* f = nullptr;
 			fopen_s(&f, fileName, "rb");
 
+			if (content == nullptr || len == nullptr)
+				return;
+
 			if (!f)
 			{
 				ErrorExit("File not found: %s\n", fileName);

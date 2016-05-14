@@ -50,7 +50,7 @@ bool initGX2(const char* Title, int PosX, int PosY, int Width, int Height, GxDri
 	wnd->window = SDL_CreateWindow(Title, PosX, PosY, Width, Height, wf);
 	wnd->Width = Width;
 	wnd->Height = Height;
-	int driverIdx = GetDriverIndex(Driver);
+	/*int driverIdx = */GetDriverIndex(Driver);
 	wnd->renderer = SDL_GetRenderer(wnd->window);
 
 	SDL_SetRenderDrawColor(wnd->renderer, 128, 128, 128, 128);

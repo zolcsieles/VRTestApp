@@ -3,7 +3,9 @@
 #include "Config.h"
 
 #ifdef USE_OPENVR
+#include "disable_warn.h"
 #include <openvr.h>
+#include "enable_warn.h"
 
 extern vr::IVRSystem* vrSys;
 extern vr::IVRCompositor* vrComp;

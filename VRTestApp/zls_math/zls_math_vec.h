@@ -25,6 +25,7 @@ namespace zls {
 			{
 				x += other.x;
 				y += other.y;
+				return *this;
 			}
 		};
 

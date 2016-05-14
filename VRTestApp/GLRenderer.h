@@ -97,6 +97,10 @@ private:
 	}
 
 public:
+	GLRenderer() : actualModel(nullptr), actualRenderTarget(nullptr), mWidth(0), mHeight(0)
+	{
+	}
+
 	void SetClearColor(float r, float g, float b, float a)
 	{
 		gl::glClearColor(r, g, b, a);
@@ -106,8 +110,8 @@ public:
 	{
 		GLuint mask = 0;
 
-		mask |= bufferMask&COLOR_BUFFER ? GL_COLOR_BUFFER_BIT : 0;
-		mask |= bufferMask&DEPTH_BUFFER ? GL_DEPTH_BUFFER_BIT : 0;
+		mask |= (bufferMask&COLOR_BUFFER) ? GL_COLOR_BUFFER_BIT : 0;
+		mask |= (bufferMask&DEPTH_BUFFER) ? GL_DEPTH_BUFFER_BIT : 0;
 
 		gl::glClear(mask);
 	}

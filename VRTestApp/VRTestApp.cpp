@@ -1,4 +1,5 @@
 #include "stdafx.h"
+
 #include <windows.h>
 
 #include "Config.h"
@@ -51,8 +52,6 @@ private:
 
 	zls::math::Vec3<vptype> mPosition;
 	zls::math::Vec2<vptype> mViewAngles;
-
-	zls::math::Vec3<vptype> mDirection;
 
 public:
 	Actor(vptype _height) : mPosition(0, 0, _height), mViewAngles(0, 0)
@@ -201,6 +200,8 @@ public:
 
 	void Set(unsigned char* ptr, unsigned int w, unsigned int h)
 	{
+		if (tgaHeader != nullptr)
+			delete[] tgaHeader;
 		tgaHeader = new TGAHeader();
 		tgaHeader->idLength = 0;
 		tgaHeader->colorMapType = 0;
@@ -260,7 +261,7 @@ public:
 
 	~TGAFile()
 	{
-		delete[] tgaHeader;
+		delete[] imageptr;
 		delete[] buffer;
 	}
 };

@@ -167,6 +167,7 @@ protected:
 #endif
 #if defined (USE_GX_OPENGL)
 		, mGLType(GLType)
+		, mGLAttribID(0)
 #endif
 		, mElemSize(ElemSize)
 	{
