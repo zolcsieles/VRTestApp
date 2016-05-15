@@ -1,7 +1,6 @@
 #include "stdafx.h"
 
 #include <windows.h>
-#include <iostream>
 #include "Config.h"
 #include "GX.h"
 #include "ERR.h"
@@ -806,7 +805,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		x += dw;
 	}
-	std::cin.ignore();
 	InitGraphics();
 
 	//Matrices

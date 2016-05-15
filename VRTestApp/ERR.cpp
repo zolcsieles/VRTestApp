@@ -3,6 +3,8 @@
 #include "ERR.h"
 
 #include <windows.h>
+#include <iostream>
+
 
 void ColoredOutput(WORD Attrib, const char* format, va_list ap)
 {
@@ -49,6 +51,6 @@ void ErrorExit(const char* format, ...)
 	va_end(ap);
 
 	printf("Press ENTER to exit.\n");
-	getchar();
+	std::cin.ignore();
 	exit(0);
 }
