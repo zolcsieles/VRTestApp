@@ -36,7 +36,7 @@ before_build:
 # verbosity: quiet|minimal|normal|detailed
 
 build_script:
- - .\scripts\build.ps1
+ - ps: Write-Host ".\scripts\build.ps1"
 
 after_build:
  - cmd: mkdir deploy
