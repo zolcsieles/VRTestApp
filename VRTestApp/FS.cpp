@@ -21,15 +21,22 @@ namespace zls
 			else
 			{
 				fseek(f, 0, SEEK_END);
-				*len = (int)ftell(f);
+				int length = (int)ftell(f);
 				fseek(f, 0, SEEK_SET);
 
-				*content = new char[*len + 1];
-				size_t rBytes = fread(*content, sizeof(char), *len, f);
-				if (*len != rBytes)
-					Error("Unable to read the full file: %s (%i/%i)", fileName, rBytes, *len);
-				(*content)[*len] = '\0';
-
+				if (length >= 0)
+				{
+					*len = length;
+					*content = new char[*len + 1];
+					size_t rBytes = fread(*content, sizeof(char), *len, f);
+					if (*len != rBytes)
+						Error("Unable to read the full file: %s (%i/%i)", fileName, rBytes, *len);
+					(*content)[*len] = '\0';
+				}
+				else
+				{
+					Error("Unable to get file size (%s).", fileName);
+				}
 				fclose(f);
 			}
 		}
