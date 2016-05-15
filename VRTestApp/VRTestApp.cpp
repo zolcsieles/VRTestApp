@@ -93,7 +93,7 @@ Actor player(startPosition, startAngles);
 class TGAFile
 {
 	char* buffer;
-	int bufferSize;
+	size_t bufferSize;
 
 	unsigned char* imageptr;
 #pragma pack(push, 1)
@@ -259,6 +259,10 @@ public:
 		return GetWidth() * GetHeight();
 	}
 
+	TGAFile() : imageptr(nullptr), buffer(nullptr), tgaHeader(nullptr), bufferSize(0)
+	{
+	}
+
 	~TGAFile()
 	{
 		delete[] imageptr;
@@ -273,7 +277,9 @@ struct SimplePlane
 	typename MyTypes<xRenderer>::Model* model;
 	typename MyTypes<xRenderer>::VertexBuffer* vertexBuffer;
 
-	SimplePlane() {}
+	SimplePlane() : model(nullptr), vertexBuffer(nullptr)
+	{
+	}
 
 	static FormatDesc<float> position;
 	static FormatDesc<float> uv;
@@ -315,7 +321,9 @@ struct TexturedBox
 	typename MyTypes<xRenderer>::VertexBuffer* vertexBuffer;
 	typename MyTypes<xRenderer>::IndexBuffer* indexBuffer;
 
-	TexturedBox() {}
+	TexturedBox() : model(nullptr), vertexBuffer(nullptr), indexBuffer(nullptr)
+	{
+	}
 
 	static FormatDesc<float> position;
 	static FormatDesc<float> uv;
@@ -421,6 +429,11 @@ public:
 	SDLAppWindow()
 	{
 		ir = new Renderer();
+	}
+
+	~SDLAppWindow()
+	{
+		delete ir;
 	}
 
 	void Init(Window* wnd)

@@ -295,13 +295,14 @@ public:
 		INFO_LOG("OGL - Load & Compile vertex shader: %s\n", fName);
 		char temp[4096];
 		char* con;
-		int len;
+		size_t len;
 		GLuint sh = 0;
 
 		zls::fs::ReadFile(fName, &con, &len);
 
 		sh = gl::glCreateShader(GL_VERTEX_SHADER);
-		gl::glShaderSource(sh, 1, &con, &len);
+		GLint length = static_cast<GLint>(len);
+		gl::glShaderSource(sh, 1, &con, &length);
 		gl::glCompileShader(sh);
 		gl::glGetShaderInfoLog(sh, 65535, NULL, temp);
 		if (temp[0]) { Warning("Shader Log: %s\n", temp); }
@@ -315,13 +316,14 @@ public:
 		INFO_LOG("OGL - Load & Compile fragment shader: %s\n", fName);
 		char temp[4096];
 		char* con;
-		int len;
+		size_t len;
 		GLuint sh = 0;
 
 		zls::fs::ReadFile(fName, &con, &len);
 
 		sh = gl::glCreateShader(GL_FRAGMENT_SHADER);
-		gl::glShaderSource(sh, 1, &con, &len);
+		GLint length = static_cast<GLint>(len);
+		gl::glShaderSource(sh, 1, &con, &length);
 		gl::glCompileShader(sh);
 		gl::glGetShaderInfoLog(sh, 65535, NULL, temp);
 		if (temp[0]) { Warning("Shader Log: %s\n", temp); }

@@ -6,13 +6,13 @@ namespace zls
 {
 	namespace fs
 	{
-		void ReadFile(const char* fileName, char** content, int* len)
+		void ReadFile(const char* fileName, char** content, size_t* len)
 		{
-			FILE* f = nullptr;
-			fopen_s(&f, fileName, "rb");
-
 			if (content == nullptr || len == nullptr)
 				return;
+
+			FILE* f = nullptr;
+			fopen_s(&f, fileName, "rb");
 
 			if (!f)
 			{
@@ -25,7 +25,9 @@ namespace zls
 				fseek(f, 0, SEEK_SET);
 
 				*content = new char[*len + 1];
-				fread(*content, sizeof(char), *len, f);
+				size_t rBytes = fread(*content, sizeof(char), *len, f);
+				if (*len != rBytes)
+					Error("Unable to read the full file: %s (%i/%i)", fileName, rBytes, *len);
 				(*content)[*len] = '\0';
 
 				fclose(f);
