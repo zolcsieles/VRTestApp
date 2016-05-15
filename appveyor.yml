@@ -19,7 +19,7 @@ configuration:
  - Release
 
 matrix:
- allow_failured:
+ allow_failures:
   - platform: x64
     configuration: Release
 
