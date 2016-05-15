@@ -426,8 +426,16 @@ protected:
 	uint32_t renderHeight;
 
 public:
-	SDLAppWindow()
+	SDLAppWindow() 
+		: texturedBoxVS(nullptr)		, simplePlaneVS(nullptr)
+		, texturedBoxFS(nullptr)		, simplePlaneFS(nullptr)
+		, texturedBoxProgram(nullptr)	, simplePlaneProgram(nullptr)
+		, vertBuffer(nullptr)
+		, colorBuffer(nullptr)
+		, constantBuffer(nullptr)
+		, texture(nullptr), renderWidth(0), renderHeight(0)
 	{
+		renderTargets[0] = renderTargets[1] = nullptr;
 		ir = new Renderer();
 	}
 
