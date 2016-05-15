@@ -43,7 +43,6 @@ after_build:
  - cmd: xcopy .\Working\Data .\deploy\Data /i /e
  - cmd: xcopy .\%CONFIGURATION%\VRTestApp.exe .\deploy\
  - cmd: 7z a binary.zip %APPVEYOR_BUILD_FOLDER%\deploy\
- - cmd: cov-build --help
 
 artifacts:
  - path: binary.zip
