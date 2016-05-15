@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include <windows.h>
-
+#include <iostream>
 #include "Config.h"
 #include "GX.h"
 #include "ERR.h"
@@ -646,11 +646,11 @@ public:
 		if (ptr != nullptr)
 		{
 			TGAFile tga;
-			tga.Set(ptr, w, h);
+			tga.Set(ptr, w, h); //ptr's ownership
+			ptr = nullptr;
 			tga.Save(fileName, xRenderer);
-
 		}
-		delete[] ptr;
+		//delete[] ptr;
 	}
 };
 
@@ -806,7 +806,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		x += dw;
 	}
-
+	std::cin.ignore();
 	InitGraphics();
 
 	//Matrices
