@@ -45,7 +45,7 @@ build_script:
     if ($True)
 
     {
-    	$x = cov-build --dir cov-int $x
+    	$x = cov-build --dir cov-int "$x"
     }
 
 
