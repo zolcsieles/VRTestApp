@@ -1,4 +1,4 @@
-version: build.{build}
+version: v1.0.{build}
 
 branches:
  only:
@@ -12,7 +12,7 @@ clone_folder: c:\!BuildOSVR\VRTestApp
 
 platform:
  - Win32
-# - x64
+ - x64
 
 configuration:
 # - Debug
@@ -30,30 +30,33 @@ install:
 before_build:
  - echo "Starting build..."
 
-build:
-  project: VRTestApp.sln
-  verbosity: normal
+#build:
+#  project: VRTestApp.sln
+#  verbosity: normal
 # verbosity: quiet|minimal|normal|detailed
+
+build_script:
+ - msbuild VRTestApp.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 after_build:
  - cmd: mkdir deploy
  - cmd: xcopy .\Working\SDL2.dll .\deploy\
  - cmd: xcopy .\Working\openvr_api.dll .\deploy\
- - cmd: xcopy .\Working\d3dcompiler_47.dll .\deploy\
+# - cmd: xcopy .\Working\d3dcompiler_47.dll .\deploy\
  - cmd: xcopy .\Working\Data .\deploy\Data /i /e
  - cmd: xcopy .\%CONFIGURATION%\VRTestApp.exe .\deploy\
  - cmd: 7z a binary.zip %APPVEYOR_BUILD_FOLDER%\deploy\
 
 artifacts:
- - path: binary.zip
+ - path: vrtestapp-binary-%PLATFORM%-%APPVEYOR_BUILD_VERSION%.zip
 
 deploy:
 - provider: GitHub
   tag: vrtestapp-$(appveyor_build_version)-$(platform)
-  release: vrtestapp-$(appveyor_build_version)-$(platform)
-  description: VR Test App release
+  release: VRTestApp-$(appveyor_build_version)-$(platform)
+  description: VR Test App release $(appveyor_build_version) - $(platform)
   auth_token:
     secure: a1D+fCbSKHqq30FF/sF1hGvs+WHLMrZ2JFKkYS4SdjOOdyve83el5ejZrv5cSYDh
-  artifact: binary.zip
+  artifact: vrtestapp-binary-%PLATFORM%-%APPVEYOR_BUILD_VERSION%.zip
   draft: false
-  prerelease: true
+  prerelease: false
