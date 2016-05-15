@@ -36,7 +36,7 @@ before_build:
 # verbosity: quiet|minimal|normal|detailed
 
 build_script:
- - msbuild VRTestApp.sln /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+ - .\scripts\build.ps1
 
 after_build:
  - cmd: mkdir deploy
