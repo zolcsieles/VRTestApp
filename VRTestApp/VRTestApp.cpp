@@ -432,6 +432,7 @@ public:
 		, texturedBoxProgram(nullptr)	, simplePlaneProgram(nullptr)
 		, vertBuffer(nullptr)
 		, colorBuffer(nullptr)
+		, indexBuffer(nullptr)
 		, constantBuffer(nullptr)
 		, texture(nullptr), renderWidth(0), renderHeight(0)
 	{
