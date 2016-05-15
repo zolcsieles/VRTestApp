@@ -10,6 +10,9 @@ os: Visual Studio 2013
 
 clone_folder: c:\!BuildOSVR\VRTestApp
 
+environment:
+ DEPLOYFILE: vrtestapp-binary-%PLATFORM%-%APPVEYOR_BUILD_VERSION%.zip
+
 platform:
  - Win32
  - x64
@@ -18,10 +21,10 @@ configuration:
 # - Debug
  - Release
 
-#matrix:
-# allow_failured:
-#  - platform: x64
-#    configuration: Debug
+matrix:
+ allow_failured:
+  - platform: x64
+    configuration: Release
 
 install:
  - cmake --version
@@ -45,10 +48,10 @@ after_build:
 # - cmd: xcopy .\Working\d3dcompiler_47.dll .\deploy\
  - cmd: xcopy .\Working\Data .\deploy\Data /i /e
  - cmd: xcopy .\%CONFIGURATION%\VRTestApp.exe .\deploy\
- - cmd: 7z a binary.zip %APPVEYOR_BUILD_FOLDER%\deploy\
+ - cmd: 7z a %DEPLOYFILE% %APPVEYOR_BUILD_FOLDER%\deploy\
 
 artifacts:
- - path: vrtestapp-binary-%PLATFORM%-%APPVEYOR_BUILD_VERSION%.zip
+ - path: %DEPLOYFILE%
 
 deploy:
 - provider: GitHub
@@ -57,6 +60,6 @@ deploy:
   description: VR Test App release $(appveyor_build_version) - $(platform)
   auth_token:
     secure: a1D+fCbSKHqq30FF/sF1hGvs+WHLMrZ2JFKkYS4SdjOOdyve83el5ejZrv5cSYDh
-  artifact: vrtestapp-binary-%PLATFORM%-%APPVEYOR_BUILD_VERSION%.zip
+  artifact: %DEPLOYFILE%
   draft: false
   prerelease: false
