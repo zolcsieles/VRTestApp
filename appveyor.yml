@@ -51,7 +51,7 @@ after_build:
  - cmd: 7z a %DEPLOYFILE% %APPVEYOR_BUILD_FOLDER%\deploy\
 
 artifacts:
- - path: %DEPLOYFILE%
+ - path: {deployfile}
 
 deploy:
 - provider: GitHub
