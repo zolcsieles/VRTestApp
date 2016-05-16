@@ -48,7 +48,7 @@ after_build:
  - cmd: 7z a vrtestapp-binary-%PLATFORM%-%APPVEYOR_BUILD_VERSION%.zip %APPVEYOR_BUILD_FOLDER%\deploy\
 
 artifacts:
- - path: vrtestapp-binary-%PLATFORM%-%APPVEYOR_BUILD_VERSION%.zip
+ - path: vrtestapp-binary-$(platform)-$(appveyor_build_version).zip
 
 deploy:
 - provider: GitHub
