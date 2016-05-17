@@ -24,6 +24,7 @@ matrix:
     configuration: Release
 
 install:
+ - curl.exe --version
  - cmake --version
  - git submodule update --init --recursive -q
 
