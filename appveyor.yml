@@ -35,7 +35,6 @@ before_build:
 # verbosity: quiet|minimal|normal|detailed
 
 build_script:
- - ps: curl.exe --version
  - ps: .\scripts\build.ps1
 
 after_build:
