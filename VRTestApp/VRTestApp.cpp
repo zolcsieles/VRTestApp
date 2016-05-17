@@ -396,6 +396,7 @@ struct ScreenShotImage
 	ScreenShotImage()
 		: mWidth(0)
 		, mHeight(0)
+		, mBytePerPixel(0)
 		, pImage(nullptr)
 	{
 	}
@@ -892,7 +893,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	ScreenShotImage d3d = d3dAppWindow.GetScreenShot();
 	ScreenShotImage ogl = glAppWindow.GetScreenShot();
 
-	if (d3d.mWidth != ogl.mWidth || d3d.mHeight != d3d.mHeight)
+	if (d3d.mWidth != ogl.mWidth || d3d.mHeight != ogl.mHeight)
 		ErrorExit("D3D and OpenGL windows size is different.");
 
 	SDL_Texture* diffTex = SDL_CreateTexture(diffRenderer, SDL_PIXELFORMAT_RGBX8888, SDL_TEXTUREACCESS_STREAMING, d3d.mWidth, d3d.mHeight);
