@@ -49,6 +49,7 @@ after_build:
 
 artifacts:
  - path: vrtestapp-binary-$(platform)-$(appveyor_build_version).zip
+ - path: cov-vrtestapp.zip
 
 deploy:
 - provider: GitHub

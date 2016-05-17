@@ -7,6 +7,7 @@ $buildArgs = @(
 if ($env:APPVEYOR_REPO_COMMIT_MESSAGE -and ($env:APPVEYOR_REPO_COMMIT_MESSAGE).Contains("[cov]"))
 {
 	& cov-build --dir cov-int $buildCmd $buildArgs
+	& 7z a cov-vrtestapp.zip cov-int
 }
 else
 {

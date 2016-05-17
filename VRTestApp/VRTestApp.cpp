@@ -35,6 +35,8 @@
 #include "VR.h"
 #endif
 
+#include <memory>
+
 bool runing = true;
 int dispWidth = 960;
 int dispHeight = 540;
@@ -94,7 +96,7 @@ class TGAFile
 	char* buffer;
 	size_t bufferSize;
 
-	unsigned char* imageptr;
+	std::shared_ptr<unsigned char> imageptr;
 #pragma pack(push, 1)
 	struct TGAHeader
 	{ //https://en.wikipedia.org/wiki/Truevision_TGA
@@ -119,7 +121,7 @@ class TGAFile
 
 	void RotateColorOnly()
 	{
-		unsigned char* pimage = imageptr;
+		unsigned char* pimage = GetPtr();
 		unsigned char* ptr = (unsigned char*)buffer + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize + 14;
 		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
 		while (ptr < ptrE)
@@ -135,7 +137,7 @@ class TGAFile
 
 	void RotateColorOnly2()
 	{
-		unsigned char* ptr = imageptr;
+		unsigned char* ptr = GetPtr();
 		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
 		while (ptr < ptrE)
 		{
@@ -150,7 +152,7 @@ class TGAFile
 
 	void RotateColorAndFlip()
 	{
-		unsigned char* pimage = imageptr + 4*GetWidth()*(GetHeight()-1);
+		unsigned char* pimage = GetPtr() + 4*GetWidth()*(GetHeight()-1);
 		unsigned char* ptr = (unsigned char*)buffer + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize + 14;
 		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
 		int cnt = GetWidth();
@@ -169,7 +171,7 @@ class TGAFile
 			}
 		}
 		pimage += GetWidth() * 4;
-		if (pimage != imageptr)
+		if (pimage != GetPtr())
 			ErrorExit("image");
 	}
 
@@ -192,12 +194,12 @@ public:
 		zls::fs::ReadFile(fileName, &buffer, &bufferSize);
 		tgaHeader = (TGAHeader*)buffer;
 
-		imageptr = new unsigned char[4 * GetPixelCount()];
+		imageptr.reset(new unsigned char[4 * GetPixelCount()]);
 
 		RotateColor(rendererType);
 	}
 
-	void Set(unsigned char* ptr, unsigned int w, unsigned int h)
+	void Set(std::shared_ptr<unsigned char> image, unsigned int w, unsigned int h)
 	{
 		if (tgaHeader != nullptr)
 			delete[] tgaHeader;
@@ -217,30 +219,28 @@ public:
 		tgaHeader->is_iBPP = 32;
 		tgaHeader->is_iDesc = (1<<5)*0;
 
-		imageptr = ptr;
+		imageptr = image;
 
 		RotateColorOnly2();
 	}
 
-	void Save(const char* fileName, RENDERER rendererType)
+	void Save(const char* fileName)
 	{
 		FILE* f = nullptr;
 		fopen_s(&f, fileName, "wb");
-
-		tgaHeader->is_iDesc = (1 << 5) * ((rendererType == D3D) ? 1 : 0);
-
+		//tgaHeader->is_iDesc = (1 << 5) * ((rendererType == D3D) ? 1 : 0);
 		if (f)
 		{
 			fwrite(tgaHeader, sizeof(TGAHeader), 1, f);
 			unsigned int size = GetPixelCount();
-			fwrite(imageptr, 4, size, f);
+			fwrite(GetPtr(), 4, size, f);
 			fclose(f);
 		}
 	}
 
 	unsigned char* GetPtr()
 	{
-		return imageptr;
+		return imageptr.get();
 	}
 
 	unsigned int GetWidth()
@@ -264,7 +264,7 @@ public:
 
 	~TGAFile()
 	{
-		delete[] imageptr;
+		imageptr.reset();
 		delete[] buffer;
 	}
 };
@@ -384,6 +384,45 @@ struct _declspec(align(8)) VS_Constant
 	zls::math::mat4 proj;
 	zls::math::mat4 view;
 	zls::math::mat4 model;
+};
+
+struct ScreenShotImage
+{
+	unsigned int mWidth;
+	unsigned int mHeight;
+	unsigned int mBytePerPixel;
+	std::shared_ptr<unsigned char> pImage;
+
+	ScreenShotImage()
+		: mWidth(0)
+		, mHeight(0)
+		, pImage(nullptr)
+	{
+	}
+
+	void FlipLines()
+	{
+		const unsigned pitch = mWidth*mBytePerPixel;
+		unsigned char* pTemp = new unsigned char[pitch];
+		for (unsigned int i = 0; i < mHeight >> 1; ++i)
+		{
+			const int iLineT = i*pitch;
+			const int iLineB = (mHeight - i - 1)*pitch;
+
+			unsigned char* pLineT = &(pImage.get()[iLineB]);
+			unsigned char* pLineB = &(pImage.get()[iLineT]);
+
+			memcpy(pTemp, pLineT, pitch);
+			memcpy(pLineT, pLineB, pitch);
+			memcpy(pLineB, pTemp, pitch);
+		}
+		delete[] pTemp;
+	}
+
+	~ScreenShotImage()
+	{
+		pImage.reset();
+	}
 };
 
 template<RENDERER xRenderer>
@@ -638,16 +677,26 @@ public:
 		ir->UploadTextureData(texture, tga.GetPtr());
 	}
 
+
+	ScreenShotImage GetScreenShot()
+	{
+		ScreenShotImage screenShotImage;
+		screenShotImage.pImage.reset(ir->GetScreenShot(screenShotImage.mWidth, screenShotImage.mHeight));
+		screenShotImage.mBytePerPixel = 4;
+		if (xRenderer == D3D)
+			screenShotImage.FlipLines();
+		return screenShotImage;
+	}
+
 	void ScreenShot(const char* fileName)
 	{
-		unsigned int w, h;
-		unsigned char* ptr = ir->GetScreenShot(w, h);
-		if (ptr != nullptr)
+		ScreenShotImage image = GetScreenShot();
+
+		if (image.pImage.get() != nullptr)
 		{
 			TGAFile tga;
-			tga.Set(ptr, w, h); //ptr's ownership
-			ptr = nullptr;
-			tga.Save(fileName, xRenderer);
+			tga.Set(image.pImage, image.mWidth, image.mHeight); //ptr's ownership
+			tga.Save(fileName);
 		}
 		//delete[] ptr;
 	}
@@ -758,6 +807,35 @@ void ScreenShot()
 	}
 }
 
+void DiffTextures(SDL_Texture* diffTex, ScreenShotImage d3d, ScreenShotImage ogl)
+{
+	unsigned char* ptr;
+	int pitch;
+	SDL_LockTexture(diffTex, nullptr, (void**)&ptr, &pitch);
+
+	unsigned int diff = pitch - d3d.mWidth*d3d.mBytePerPixel;
+	int pixValue;
+
+	unsigned char* pDst = ptr;
+	unsigned char* pSrc1 = d3d.pImage.get();
+	unsigned char* pSrc2 = ogl.pImage.get();
+
+	for (int cy = 0; cy < d3d.mHeight; ++cy)
+	{
+		for (int cx = 0; cx < d3d.mWidth; ++cx)
+		{
+			for (int cb = 0; cb < d3d.mBytePerPixel; ++cb)
+			{
+				pixValue = static_cast<int>(*pSrc1++) - static_cast<int>(*pSrc2++);
+				*pDst++ = pixValue < 5 ? 0x00 : 0xFF;
+			}
+			pDst += diff;
+		}
+	}
+
+	SDL_UnlockTexture(diffTex);
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	atexit(MyExit);
@@ -807,6 +885,19 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 	InitGraphics();
 
+#if defined(WITH_DIFF) && defined(USE_GX_OPENGL) && defined(USE_GX_D3D11)
+	SDL_Window *diffWindow = SDL_CreateWindow("DiffWindow", (fullWidth - dispWidth) >> 1, 50 + padding + dispHeight, dispWidth, dispHeight, 0);
+	SDL_Renderer *diffRenderer = SDL_CreateRenderer(diffWindow, -1, 0);
+
+	ScreenShotImage d3d = d3dAppWindow.GetScreenShot();
+	ScreenShotImage ogl = glAppWindow.GetScreenShot();
+
+	if (d3d.mWidth != ogl.mWidth || d3d.mHeight != d3d.mHeight)
+		ErrorExit("D3D and OpenGL windows size is different.");
+
+	SDL_Texture* diffTex = SDL_CreateTexture(diffRenderer, SDL_PIXELFORMAT_RGBX8888, SDL_TEXTUREACCESS_STREAMING, d3d.mWidth, d3d.mHeight);
+#endif
+
 	//Matrices
 	float tick0, tick1, dt;
 	tick0 = tick1 = GetTickCount64() * (1.0f / 1000.0f);
@@ -821,6 +912,19 @@ int _tmain(int argc, _TCHAR* argv[])
 		monoRenderFrame();
 		Sleep(5);
 		ScreenShot();
+
+		//Just update? Memory alloc.
+#if defined(WITH_DIFF)
+ 		d3d.pImage.reset();
+ 		ogl.pImage.reset();
+
+		d3d = d3dAppWindow.GetScreenShot();
+		ogl = glAppWindow.GetScreenShot();
+
+		DiffTextures(diffTex, d3d, ogl);
+		SDL_RenderCopy(diffRenderer, diffTex, nullptr, nullptr);
+		SDL_RenderPresent(diffRenderer);
+#endif
 	}
 
 	return 0;
