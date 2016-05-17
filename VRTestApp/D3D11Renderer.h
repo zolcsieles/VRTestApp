@@ -634,8 +634,8 @@ public:
 				}
 				_Width = width;
 				_Height = height;
+				pTemp->Release();
 			}
-			pTemp->Release();
 		}
 		
 		return ptr;
