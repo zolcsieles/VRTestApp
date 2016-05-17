@@ -1,4 +1,7 @@
 $buildCmd = "C:\Program Files (x86)\MSBuild\12.0\bin\msbuild.exe"
+
+& curl --help
+
 $buildArgs = @(
 	"VRTestApp.sln"
 	"/logger:C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
