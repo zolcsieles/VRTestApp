@@ -11,6 +11,7 @@ if ($env:APPVEYOR_REPO_COMMIT_MESSAGE -and ($env:APPVEYOR_REPO_COMMIT_MESSAGE).C
 {
 	& cov-build --dir cov-int $buildCmd $buildArgs
 	& 7z a cov-vrtestapp.zip cov-int
+	& curl.exe --form token=p0P3q01mzsV165C6db1bbQ --form email=zolcsieles@gmail.com --form file=@cov-vrtestapp.zip --form version="$env:APPVEYOR_BUILD_VERSION" --form description="$env:APPVEYOR_REPO_COMMIT_MESSAGE_EXTENDED" https://scan.coverity.com/builds?project=zolcsieles%2FVRTestApp
 }
 else
 {
