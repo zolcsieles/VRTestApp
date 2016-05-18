@@ -24,7 +24,6 @@
 
 #include "FS.h"
 
-#include <math.h>
 #include "zls_math/zls_math.h"
 
 #include <map>
@@ -821,11 +820,11 @@ void DiffTextures(SDL_Texture* diffTex, ScreenShotImage d3d, ScreenShotImage ogl
 	unsigned char* pSrc1 = d3d.pImage.get();
 	unsigned char* pSrc2 = ogl.pImage.get();
 
-	for (int cy = 0; cy < d3d.mHeight; ++cy)
+	for (unsigned int cy = 0; cy < d3d.mHeight; ++cy)
 	{
-		for (int cx = 0; cx < d3d.mWidth; ++cx)
+		for (unsigned int cx = 0; cx < d3d.mWidth; ++cx)
 		{
-			for (int cb = 0; cb < d3d.mBytePerPixel; ++cb)
+			for (unsigned int cb = 0; cb < d3d.mBytePerPixel; ++cb)
 			{
 				pixValue = static_cast<int>(*pSrc1++) - static_cast<int>(*pSrc2++);
 				*pDst++ = pixValue < 5 ? 0x00 : 0xFF;
