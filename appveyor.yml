@@ -26,26 +26,12 @@ matrix:
 install:
  - git submodule update --init --recursive -q
 
-before_build:
- - echo "Starting build..."
-
-#build:
-#  project: VRTestApp.sln
-#  verbosity: normal
-# verbosity: quiet|minimal|normal|detailed
-
 build_script:
  - ps: .\scripts\build.ps1
 
 after_build:
- - cmd: mkdir deploy
- - cmd: xcopy .\Working\SDL2.dll .\deploy\
- - cmd: xcopy .\Working\openvr_api.dll .\deploy\
-# - cmd: xcopy .\Working\d3dcompiler_47.dll .\deploy\
- - cmd: xcopy .\Working\Data .\deploy\Data /i /e
- - cmd: xcopy .\%CONFIGURATION%\VRTestApp.exe .\deploy\
- - cmd: 7z a vrtestapp-binary-%PLATFORM%-%APPVEYOR_BUILD_VERSION%.zip %APPVEYOR_BUILD_FOLDER%\deploy\
-
+ - ps: .\scripts\after_build.ps1
+ 
 artifacts:
  - path: vrtestapp-binary-$(platform)-$(appveyor_build_version).zip
  - path: cov-vrtestapp.zip
