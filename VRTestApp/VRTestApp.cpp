@@ -807,7 +807,7 @@ void ScreenShot()
 	}
 }
 
-void DiffTextures(SDL_Texture* diffTex, ScreenShotImage d3d, ScreenShotImage ogl)
+void DiffTextures(SDL_Texture* diffTex, const ScreenShotImage& d3d, const ScreenShotImage& ogl)
 {
 	unsigned char* ptr;
 	int pitch;
