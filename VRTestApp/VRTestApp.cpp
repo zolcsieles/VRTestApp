@@ -121,7 +121,7 @@ class TGAFile
 	void RotateColorOnly()
 	{
 		unsigned char* pimage = GetPtr();
-		unsigned char* ptr = (unsigned char*)buffer + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize + 14;
+		unsigned char* ptr = (unsigned char*)buffer + sizeof(TGAHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize;
 		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
 		while (ptr < ptrE)
 		{
@@ -152,7 +152,7 @@ class TGAFile
 	void RotateColorAndFlip()
 	{
 		unsigned char* pimage = GetPtr() + 4*GetWidth()*(GetHeight()-1);
-		unsigned char* ptr = (unsigned char*)buffer + sizeof(tgaHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize + 14;
+		unsigned char* ptr = (unsigned char*)buffer + sizeof(TGAHeader) + tgaHeader->idLength + tgaHeader->cms_colorMapEntrySize;
 		unsigned char* ptrE = ptr + tgaHeader->is_iWidth*tgaHeader->is_iHeight*tgaHeader->is_iBPP / 8;
 		int cnt = GetWidth();
 		while (ptr < ptrE)
