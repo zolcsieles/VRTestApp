@@ -12,7 +12,7 @@ clone_folder: c:\!BuildOSVR\VRTestApp
 
 platform:
  - Win32
-# - x64
+ - x64
 
 configuration:
 # - Debug
@@ -21,7 +21,6 @@ configuration:
 matrix:
  allow_failures:
   - platform: x64
-    configuration: Release
 
 install:
  - git submodule update --init --recursive -q
@@ -34,7 +33,7 @@ after_build:
  
 artifacts:
  - path: vrtestapp-binary-$(platform)-$(appveyor_build_version).zip
- - path: cov-vrtestapp.zip
+ - path: cov-vrtestapp-$(platform).zip
 
 deploy:
 - provider: GitHub
