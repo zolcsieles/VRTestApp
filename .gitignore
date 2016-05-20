@@ -188,3 +188,12 @@ GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
 /Working/VRTestApp.exe
+/Working/direct3d.tga
+/Working/opengl.tga
+/Working/d3dcompiler_47.dll
+/Working/SDL2.dll
+/Working/openvr_api.dll
+/Working/gliConfig_DebugContext.ini
+/Working/gliConfig.ini
+/Working/gliConfig_FullDebug.ini
+/cov-int

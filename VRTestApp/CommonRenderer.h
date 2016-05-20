@@ -1,6 +1,18 @@
 #pragma once
 
+#include "Config.h"
+#include <vector>
+#include <stdlib.h>
 #include <algorithm>
+
+#if defined (USE_GX_D3D11)
+#include "D3D.h"
+#endif
+#if defined (USE_GX_OPENGL)
+#include "GL.h"
+#endif
+
+#undef max
 
 enum BufferMask {
 	COLOR_BUFFER = 1,
@@ -8,10 +20,7 @@ enum BufferMask {
 	STENCIL_BUFFER = 4,
 };
 
-enum RENDERER {
-	D3D,
-	OGL
-};
+#include "renderers.h"
 
 class Layout;
 
@@ -172,9 +181,6 @@ protected:
 		, mElemSize(ElemSize)
 	{
 		mParamName = _strdup(ParamName);
-		/*const size_t len = strlen(ParamName) + 1;
-		mParamName = new char[len];
-		strcpy_s(mParamName, len, ParamName);*/
 	}
 
 public:
@@ -295,7 +301,7 @@ public:
 	void AddElement(FormatDescBase* formatDesc)
 	{
 		layout.push_back(formatDesc);
-		lastSlot = max(lastSlot, formatDesc->GetInputSlot());
+		lastSlot = std::max(lastSlot, formatDesc->GetInputSlot());
 	}
 
 	void Update()

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "ERR.h"
+#include "GX.h"
+#include "FS.h"
 
 typedef IShader<GLuint, void> GLVertexShader;
 typedef IShader<GLuint, void> GLFragmentShader;
