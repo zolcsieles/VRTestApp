@@ -9,7 +9,16 @@ $buildArgs = @(
 	"/logger:C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 	);
 
-if ($env:APPVEYOR_REPO_COMMIT_MESSAGE -and ($env:APPVEYOR_REPO_COMMIT_MESSAGE).Contains("[cov]"))
+#32-bit (default)
+$bitness = 32
+
+# 64-bit
+if ($env:PLATFORM -eq "Win64" -or $env:PLATFORM -eq "x64")
+{
+	$bitness = "64"
+}
+	
+if ($env:APPVEYOR_REPO_COMMIT_MESSAGE -and ($env:APPVEYOR_REPO_COMMIT_MESSAGE).Contains("[cov]") -and ($bitness -eq "32"))
 {
 	& cov-build --dir cov-int $buildCmd $buildArgs
 	$covfile = "cov-vrtestapp-$env:PLATFORM.zip"
