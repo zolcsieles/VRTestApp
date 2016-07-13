@@ -1,5 +1,7 @@
 #pragma once
 
+#include <math.h>
+
 namespace zls
 {
 	namespace math
@@ -20,6 +22,12 @@ namespace zls
 		T sqrt(const T _sq)
 		{
 			return ::sqrt(_sq);
+		}
+
+		template<typename T>
+		T fmod(const T _x, const T _y)
+		{
+			return ::fmod(_x, _y);
 		}
 	}
 }

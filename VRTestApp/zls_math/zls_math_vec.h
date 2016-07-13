@@ -6,7 +6,7 @@ namespace zls {
 		template<typename T>
 		class Vec2
 		{
-		private:
+		public:
 			union {
 				T x;/* T r; T s;*/
 			};
@@ -55,9 +55,19 @@ namespace zls {
 				return Vec3(x-other.x, y-other.y, z-other.z);
 			}
 
+			Vec3 operator+(const Vec3& other) const
+			{
+				return Vec3(x + other.x, y + other.y, z + other.z);
+			}
+
 			T operator*(const Vec3& other) const
 			{
 				return (x*other.x + y*other.y + z*other.z);
+			}
+
+			Vec3 operator*(const T scalar) const
+			{
+				return Vec3(x*scalar, y*scalar, z*scalar);
 			}
 
 			Vec3 operator +=(const Vec3& other)
@@ -73,12 +83,18 @@ namespace zls {
 				return Vec3(y*other.z-z*other.y, z*other.x-x*other.z, x*other.y-y*other.x);
 			}
 
-			Vec3 normal()
+			Vec3 normal() const
 			{
 				T length = zls::math::sqrt( x*x + y*y + z*z );
 				return Vec3(x/length, y/length, z/length);
 			}
 		};
+
+ 		template<typename T>
+		Vec3<T> operator*(const T scalar, const Vec3<T>& vec)
+		{
+			return Vec3<T>(vec.x*scalar, vec.y*scalar, vec.z*scalar);
+		}
 
 		template<typename T>
 		class Vec4
