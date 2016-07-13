@@ -40,7 +40,7 @@ void MyExit()
 	shutdownGX();
 }
 
-void Events(float dt)
+bool Events(float dt)
 {
 	static bool pressed[SDL_NUM_SCANCODES] = { false };
 
@@ -56,6 +56,12 @@ void Events(float dt)
 
 	zls::math::vec3 position_add(0, 0, 0);
 	float speed = 1.0f * dt;
+	bool result = true;
+
+	if (pressed[SDL_SCANCODE_ESCAPE])
+	{
+		result = false;;
+	}
 
 	if (pressed[SDL_SCANCODE_D])
 	{
@@ -91,6 +97,7 @@ void Events(float dt)
 	}
 
 	player.AddPosition(position_add);
+	return result;
 }
 
 void InitGraphics()
@@ -228,7 +235,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		tick0 = tick1;
 		tick1 = actualTickCount * (1.0f / 1000.0f);
 		dt = tick1 - tick0;
-		Events(dt);
+		runing = Events(dt);
 		
 		monoRenderFrame();
 		Sleep(5);
