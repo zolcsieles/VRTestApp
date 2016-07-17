@@ -164,6 +164,127 @@ void DiffTextures(SDL_Texture* diffTex, const ScreenShotImage& d3d, const Screen
 	SDL_UnlockTexture(diffTex);
 }
 
+class Mouse
+{
+private:
+	Uint32 buttons;
+	Uint32 lastbuttons;
+
+	int dx;
+	int dy;
+	int mx;
+	int my;
+
+	bool bIsCapture;
+public:
+	Mouse() : bIsCapture(false), buttons(0), lastbuttons(0), dx(0), dy(0), mx(0), my(0)
+	{
+	}
+
+	void Capture()
+	{
+		bIsCapture = SDL_CaptureMouse(SDL_TRUE) == 0;
+		if (!bIsCapture)
+		{
+			ErrorExit("Mouse error: %s\n", SDL_GetError());
+		}
+	}
+
+	void SetRelativeMouseMode()
+	{
+		if (!SDL_SetRelativeMouseMode(SDL_TRUE) == 0)
+		{
+			ErrorExit("Mouse error: %s\n", SDL_GetError());
+		}
+	}
+
+	void SetAbsoluteMouseMode()
+	{
+		if (SDL_SetRelativeMouseMode(SDL_FALSE) != 0)
+		{
+			ErrorExit("Mouse error: %s\n", SDL_GetError());
+		}
+	}
+
+	void Release()
+	{
+		bIsCapture = bIsCapture && SDL_CaptureMouse(SDL_FALSE) != 0;
+		if (bIsCapture)
+		{
+			ErrorExit("Mouse error: %s\n", SDL_GetError());
+		}
+	}
+
+	//
+	void Update()
+	{
+		lastbuttons = buttons;
+		if (SDL_GetRelativeMouseMode())
+		{
+			buttons = SDL_GetRelativeMouseState(&dx, &dy);
+			mx += dx;
+			my += dy;
+		}
+		else
+		{
+			int x(mx), y(my);
+			buttons = SDL_GetMouseState(&mx, &my);
+			dx = mx - x;
+			dy = my - y;
+		//	Warning("%3i %3i -> %3i %3i - %3i %3i\n", x, y, mx, my, dx, dy);
+		}
+	}
+
+	void ResetMouse()
+	{
+		mx = my = dx = dy = 0;
+	}
+
+	int GetX()
+	{
+		return mx;
+	}
+
+	int GetY()
+	{
+		return my;
+	}
+
+	int GetDeltaX()
+	{
+		return dx;
+	}
+
+	int GetDeltaY()
+	{
+		return dy;
+	}
+
+	bool IsButtonPressed(int button)
+	{
+		const int btn = SDL_BUTTON(button);
+		return (buttons & btn) != 0;
+	}
+
+	bool IsButtonReleased(int button)
+	{
+		const int btn = SDL_BUTTON(button);
+		return (buttons & btn) == 0;
+	}
+
+	bool IsButtonPressedNow(int button)
+	{
+		const int btn = SDL_BUTTON(button);
+		return ((buttons & btn) != 0) && ((lastbuttons & btn) == 0);
+	}
+
+	bool IsButtonReleasedNow(int button)
+	{
+		const int btn = SDL_BUTTON(button);
+		return ((buttons & btn) == 0) && ((lastbuttons & btn) != 0);
+	}
+};
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	atexit(MyExit);
@@ -229,6 +350,10 @@ int _tmain(int argc, _TCHAR* argv[])
 	//Matrices
 	float tick0, tick1, dt;
 	tick0 = tick1 = GetTickCount64() * (1.0f / 1000.0f);
+
+	Mouse mouse;
+	mouse.Capture();
+	mouse.SetRelativeMouseMode();
 	while (runing)
 	{
 		actualTickCount = GetTickCount64() << 2;
@@ -236,9 +361,9 @@ int _tmain(int argc, _TCHAR* argv[])
 		tick1 = actualTickCount * (1.0f / 1000.0f);
 		dt = tick1 - tick0;
 		runing = Events(dt);
-		
+		mouse.Update();
+
 		monoRenderFrame();
-		Sleep(5);
 		ScreenShot();
 
 		//Just update? Memory alloc.
@@ -254,6 +379,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		SDL_RenderPresent(diffRenderer);
 #endif
 	}
-
+	mouse.Release();
 	return 0;
 }
