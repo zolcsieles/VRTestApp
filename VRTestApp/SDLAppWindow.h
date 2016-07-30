@@ -188,7 +188,7 @@ public:
 	{
 		ir->Clear(COLOR_BUFFER | DEPTH_BUFFER);
 		ir->ActivateProgram(texturedBoxProgram);
-		float t = (actualTickCount % 10000ULL) / 10000.0f;
+		float t = zls::math::fmod(actualTickCount, 1000.0);
 		SetUniforms(t, true);
 
 		ir->BindModel(texturedBox.model);

@@ -19,7 +19,7 @@ int dispWidth = 960;
 int dispHeight = 540;
 bool screenShot = false;
 
-unsigned long long actualTickCount = 0;
+double actualTickCount = 0.0;
 
 zls::math::vec3 startPosition(0.0, 1.70f, -3.6f);
 zls::math::vec2 startAngles(0.0, 0.0f);
@@ -78,6 +78,73 @@ public:
 	bool IsKeyReleasedNow(SDL_Scancode scancode)
 	{
 		return !pressed.test(scancode) && oldpressed.test(scancode);
+	}
+};
+
+class MCounterBase
+{
+protected:
+	typedef double typeReal;
+	typeReal deltaTick;
+
+public:
+	typeReal Get()
+	{
+		return deltaTick;
+	}
+
+	float GetFloat()
+	{
+		return deltaTick;
+	}
+};
+
+class MCounter : public MCounterBase
+{
+	Uint64 perfCntr, perfCntrOld;
+
+public:
+	MCounter() : perfCntrOld(0), perfCntr(0)
+	{
+	}
+
+	void Init()
+	{
+		perfCntr = GetTickCount64();
+	}
+
+	typeReal Update()
+	{
+		perfCntrOld = perfCntr;
+		perfCntr = GetTickCount64();
+		deltaTick = (perfCntr - perfCntrOld);
+		deltaTick /= 1000;
+		return deltaTick;
+	}
+};
+
+class MCounterPerf : public MCounterBase
+{
+	Uint64 perfFreq;
+	Uint64 perfCntr, perfCntrOld;
+public:
+	MCounterPerf() : perfFreq(0), perfCntr(0), perfCntrOld(0)
+	{
+	}
+
+	void Init()
+	{
+		perfFreq = SDL_GetPerformanceFrequency();
+		perfCntr = SDL_GetPerformanceCounter();
+	}
+
+	typeReal Update()
+	{
+		perfCntrOld = perfCntr;
+		perfCntr = SDL_GetPerformanceCounter();
+		deltaTick = ((perfCntr - perfCntrOld));
+		deltaTick /= perfFreq;
+		return deltaTick;
 	}
 };
 
@@ -541,9 +608,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	SDL_Texture* diffTex = SDL_CreateTexture(diffRenderer, SDL_PIXELFORMAT_RGBX8888, SDL_TEXTUREACCESS_STREAMING, d3d.mWidth, d3d.mHeight);
 #endif
 
-	//Matrices
-	float tick0, tick1, dt;
-	tick0 = tick1 = GetTickCount64() * (1.0f / 1000.0f);
+	MCounterPerf counter;
+	counter.Init();
 
 	Mouse mouse;
 	mouse.Capture();
@@ -559,11 +625,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	//INPUT
 	while (runing)
 	{
-		actualTickCount = GetTickCount64() << 2;
-		tick0 = tick1;
-		tick1 = actualTickCount * (1.0f / 1000.0f);
-		dt = tick1 - tick0;
-		runing = Events(dt, &keyb);
+		actualTickCount += counter.Update()/2.0;
+		runing = Events(counter.Get(), &keyb);
 		mouse.Update();
 
 		monoRenderFrame();
