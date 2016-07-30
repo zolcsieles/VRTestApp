@@ -8,6 +8,8 @@
 #include "GX.h"
 #include "ERR.h"
 
+#include <bitset>
+
 #if defined USE_OPENVR
 #include "VR.h"
 #endif
@@ -40,58 +42,100 @@ void MyExit()
 	shutdownGX();
 }
 
-bool Events(float dt)
+class Keyboard
 {
-	static bool pressed[SDL_NUM_SCANCODES] = { false };
+	typedef std::bitset<SDL_NUM_SCANCODES> ScancodeBits;
+	ScancodeBits pressed;
+	ScancodeBits oldpressed;
+public:
+	Keyboard()
+	{
+		pressed.reset();
+		oldpressed.reset();
+	}
 
+	void Update(bool _pressed, SDL_Scancode scancode)
+	{
+		oldpressed.set(scancode, pressed.test(scancode));
+		pressed.set(scancode, _pressed);
+	}
+
+	bool IsKeyPressed(SDL_Scancode scancode)
+	{
+		return pressed.test(scancode);
+	}
+
+	bool IsKeyReleased(SDL_Scancode scancode)
+	{
+		return !pressed.test(scancode);
+	}
+
+	bool IsKeyPressedNow(SDL_Scancode scancode)
+	{
+		return pressed.test(scancode) && !oldpressed.test(scancode);
+	}
+
+	bool IsKeyReleasedNow(SDL_Scancode scancode)
+	{
+		return !pressed.test(scancode) && oldpressed.test(scancode);
+	}
+};
+
+bool Events(float dt, Keyboard* keyb)
+{
 	SDL_Event e;
 	if (SDL_PollEvent(&e))
 	{
-		if (e.type == SDL_QUIT) runing = false;
-		if (e.type == SDL_KEYDOWN)
-			pressed[e.key.keysym.scancode] = true;
-		if (e.type == SDL_KEYUP)
-			pressed[e.key.keysym.scancode] = false;
+		switch (e.type)
+		{
+		case SDL_QUIT:
+			runing = false;
+			break;
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+			keyb->Update(e.type == SDL_KEYDOWN, e.key.keysym.scancode);
+			break;
+		}
 	}
 
 	zls::math::vec3 position_add(0, 0, 0);
 	float speed = 1.0f * dt;
 	bool result = true;
 
-	if (pressed[SDL_SCANCODE_ESCAPE])
+	if (keyb->IsKeyPressed(SDL_SCANCODE_ESCAPE))
 	{
 		result = false;;
 	}
 
-	if (pressed[SDL_SCANCODE_D])
+	if (keyb->IsKeyPressed(SDL_SCANCODE_D))
 	{
 		position_add.x += speed;
 	}
-	if (pressed[SDL_SCANCODE_A])
+	if (keyb->IsKeyPressed(SDL_SCANCODE_A))
 	{
 		position_add.x -= speed;
 	}
 
-	if (pressed[SDL_SCANCODE_W])
+	if (keyb->IsKeyPressed(SDL_SCANCODE_W))
 	{
 		position_add.z += speed;
 	}
-	if (pressed[SDL_SCANCODE_S])
+	if (keyb->IsKeyPressed(SDL_SCANCODE_S))
 	{
 		position_add.z -= speed;
 	}
 
-	if (pressed[SDL_SCANCODE_R])
+	if (keyb->IsKeyPressed(SDL_SCANCODE_R))
 	{
 		position_add.y += speed;
 	}
-	if (pressed[SDL_SCANCODE_F])
+	if (keyb->IsKeyPressed(SDL_SCANCODE_F))
 	{
 		position_add.y -= speed;
 	}
 
 	screenShot = false;
-	if (pressed[SDL_SCANCODE_SPACE])
+	if (keyb->IsKeyPressed(SDL_SCANCODE_SPACE))
 	{
 		screenShot = true;
 	}
@@ -285,6 +329,156 @@ public:
 	}
 };
 
+class Joystick //GameController base class. It should be renamed to InputControllerBase and implement Joystick as controller that not supports GameController interface.
+{
+protected:
+	SDL_Joystick* ptr_joy;
+
+public:
+	Joystick(SDL_Joystick* _ptr) : ptr_joy(_ptr)
+	{
+	}
+
+	bool IsAttached()
+	{
+		return SDL_JoystickGetAttached(ptr_joy) == SDL_TRUE;
+	}
+};
+
+class GameController : public Joystick
+{
+	SDL_GameController* ptr_gctrl;
+
+	//State variables:
+	float leftX;
+	float leftY;
+
+	float rightX;
+	float rightY;
+
+	float leftTrigger;
+	float rightTrigger;
+
+	unsigned long button, oldbutton; 
+
+public:
+	GameController(SDL_GameController* _ptr) : Joystick(SDL_GameControllerGetJoystick(ptr_gctrl)), ptr_gctrl(_ptr)
+	{
+	}
+
+	~GameController()
+	{
+		SDL_GameControllerClose(ptr_gctrl);
+	}
+
+	void Update()
+	{
+		leftX = SDL_GameControllerGetAxis(ptr_gctrl, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_LEFTX) / 32768.0f;
+		leftY = SDL_GameControllerGetAxis(ptr_gctrl, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_LEFTY) / 32768.0f;
+		rightX = SDL_GameControllerGetAxis(ptr_gctrl, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX) / 32768.0f;
+		rightY = SDL_GameControllerGetAxis(ptr_gctrl, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY) / 32768.0f;
+		leftTrigger = SDL_GameControllerGetAxis(ptr_gctrl, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERLEFT) / 32768.0f;
+		rightTrigger = SDL_GameControllerGetAxis(ptr_gctrl, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERRIGHT) / 32768.0f;
+
+		oldbutton = button;
+		button = 0;
+		for (int i = 0; i < SDL_CONTROLLER_BUTTON_MAX; ++i)
+		{
+			button |= SDL_GameControllerGetButton(ptr_gctrl, SDL_GameControllerButton(i)) << i;
+		}
+	}
+
+	float GetAxisLeftX()
+	{
+		return leftX;
+	}
+
+	float GetAxisLeftY()
+	{
+		return leftY;
+	}
+
+	float GetAxisRightX()
+	{
+		return rightX;
+	}
+
+	float GetAxisRightY()
+	{
+		return rightY;
+	}
+
+	float GetAxisLeftTrigger()
+	{
+		return leftTrigger;
+	}
+
+	float GetAxisRightTrigger()
+	{
+		return rightTrigger;
+	}
+
+	bool IsButtonPressed(int btn)
+	{
+		return (button & (1<<btn)) != 0;
+	}
+
+	bool IsButtonReleased(int btn)
+	{
+		return (button & (1 << btn)) != 1;
+	}
+
+	bool IsButtonPressedNow(int btn)
+	{
+		return ((button & (1 << btn)) != 0) && ((oldbutton & (1 << btn)) != 1);
+	}
+
+	bool IsButtonReleasedNow(int btn)
+	{
+		return ((button & (1 << btn)) != 1) && ((oldbutton & (1 << btn)) != 0);
+	}
+};
+
+class GameControllerManager
+{
+	int joyCount;
+	int hapticCount;
+
+public:
+
+	void Init()
+	{
+		SDL_InitSubSystem(SDL_INIT_HAPTIC | SDL_INIT_GAMECONTROLLER);
+		joyCount = SDL_NumJoysticks();
+		hapticCount = SDL_NumHaptics();
+	}
+
+	GameController* GetGameController(int idx)
+	{
+		for (int i = 0; i < joyCount; ++i)
+		{
+			if (SDL_IsGameController(i))
+			{
+				if (!idx--)
+				{
+					return new GameController(SDL_GameControllerOpen(i));
+				}
+			}
+		}
+		return nullptr;
+	}
+
+	int GetJoystickCount()
+	{
+		return joyCount;
+	}
+
+	int GetHapticCount()
+	{
+		return hapticCount;
+	}
+};
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	atexit(MyExit);
@@ -354,13 +548,22 @@ int _tmain(int argc, _TCHAR* argv[])
 	Mouse mouse;
 	mouse.Capture();
 	mouse.SetRelativeMouseMode();
+
+	Keyboard keyb;
+
+	GameControllerManager gcman;
+	gcman.Init();
+	GameController* ctrl;
+	ctrl = gcman.GetGameController(0);
+
+	//INPUT
 	while (runing)
 	{
 		actualTickCount = GetTickCount64() << 2;
 		tick0 = tick1;
 		tick1 = actualTickCount * (1.0f / 1000.0f);
 		dt = tick1 - tick0;
-		runing = Events(dt);
+		runing = Events(dt, &keyb);
 		mouse.Update();
 
 		monoRenderFrame();
